@@ -1,6 +1,8 @@
 import cvxpy as cp
 import numpy as np
 
+np.set_printoptions(suppress=True)
+
 l1 = 0.2 #[m]
 
 body_w = 0.4 #[m]
@@ -46,16 +48,19 @@ q_feet = np.concatenate((xfl,xfr,xbl,xbr))
 A = AccelerationMatrix(q_feet)
 
 # verify A
+print('Map between foot force and acceleration:')
 print(A)
+
+##################### Four-foot Test (Stand) #########################
 
 # target body acceleration
 b = np.zeros((6,1))
 b[2] = 10 # [m/s2]
-b[5] = 1 # [rad/s2]
+b[3] = 1 # [rad/s2]
 
-# Construct the problem.
+##### Construct the problem #######
 x = cp.Variable(3*n)
-objective = cp.Minimize(cp.sum_squares(A*x - b) + (1e-6)*cp.norm(x))
+objective = cp.Minimize(cp.sum_squares(A*x - b) + (1e-3)*cp.norm(x))
 
 # Constrain vertical component of foot forces to be >= 0
 constraints = [0 <= x[2], 0 <= x[5], 0 <= x[8], 0 <= x[11]]
@@ -63,9 +68,58 @@ prob = cp.Problem(objective, constraints)
 
 # Solve for foot forces
 result = prob.solve()
-np.set_printoptions(suppress=True)
-print(x.value)
 
-# The optimal Lagrange multiplier for a constraint is stored in
-# `constraint.dual_value`.
-# print(constraints[0].dual_value)
+print('------------Four-foot test (stand)------------')
+print('Desired acceleration')
+print(b)
+print('Foot forces:')
+print(x.value)
+print(prob.status)
+print('Actual accleration')
+print(np.dot(A,x.value))
+
+##################### Two-foot Test (Trot) #########################
+# Find foot forces when you set the condition that only two legs are in contact with the ground
+b = np.zeros((6,1))
+b[2] = 10 # [m/s2]
+b[3] = 1 # [rad/s2]
+b[4] = -1 # [rad/s2]
+x = cp.Variable(3*n)
+objective = cp.Minimize(cp.sum_squares(A*x - b) + (1e-3)*cp.norm(x))
+constraints = [0 <= x[2], 0 <= x[5], 0 <= x[8], 0 <= x[11]]
+constraints = constraints + [0 <= x[3:6], 0 >= x[3:6], 0 <= x[6:9], 0 >= x[6:9]]
+prob = cp.Problem(objective, constraints)
+result = prob.solve()
+print('------------Two-foot test (trot)------------')
+print('Desired acceleration')
+print(b)
+print('Foot forces:')
+print(x.value)
+print(prob.status)
+print('Actual accleration')
+print(np.dot(A,x.value))
+
+##################### Three-foot Test (Walk) #########################
+# Find foot forces when you set the condition that only two legs are in contact with the ground
+b = np.zeros((6,1))
+b[2] = 10 # [m/s2]
+b[3] = 1 # [rad/s2]
+b[4] = -1 # [rad/s2]
+x = cp.Variable(3*n)
+objective = cp.Minimize(cp.sum_squares(A*x - b) + (1e-3)*cp.norm(x))
+constraints = [0 <= x[2], 0 <= x[5], 0 <= x[8], 0 <= x[11]]
+constraints = constraints + [0 <= x[0:3], 0 >= x[0:3]]
+prob = cp.Problem(objective, constraints)
+result = prob.solve()
+print('------------Three-foot test (trot)------------')
+print('Desired acceleration')
+print(b)
+print('Foot forces:')
+print(x.value)
+print(prob.status)
+print('Actual accleration')
+print(np.dot(A,x.value))
+
+
+
+
