@@ -1,0 +1,1 @@
+Simulate controlling a 12DOF robot dog in Mujoco using whole-body PID and foot force allocation using a QP solver.
