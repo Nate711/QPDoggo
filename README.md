@@ -7,7 +7,8 @@ The goal of this project is to simulate a controller that uses whole-body PID an
 1. Activate a python3 conda environment
 2. Install cvxpy
 ```
-pip install cvxpy
+conda install -c conda-forge lapack
+conda install -c cvxgrp cvxpy
 ```
 3. Install mujoco-py: https://github.com/openai/mujoco-py
 
