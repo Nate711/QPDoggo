@@ -5,6 +5,9 @@ The goal of this project is to simulate a controller that uses whole-body PID an
 
 ## Install
 1. Activate a python3 conda environment
+```
+source activate [environment name]
+```
 2. Install cvxpy
 ```
 conda install -c conda-forge lapack
