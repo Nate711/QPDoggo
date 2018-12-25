@@ -1,0 +1,113 @@
+<!-- Cheetah Model
+
+    The state space is populated with joints in the order that they are
+    defined in this file. The actuators also operate on joints.
+
+    State-Space (name/joint/parameter):
+        - rootx         slider    position (m)
+        - rootz         slider    position (m)
+        - rooty         hinge     angle (rad)
+        - ftangential   hinge     angle (rad)
+        - fradial       hinge     angle (rad)
+        - btangential   hinge     angle (rad)
+        - bradial       hinge     angle (rad)
+
+    Actuators (name/actuator/parameter):
+        - ftangential   hinge       angle command (rad)
+        - fradial       hinge       angle command (rad)
+        - btangential   hinge       angle command (rad)
+        - bradial       hinge       angle command (rad)
+
+-->
+<mujoco model="cheetah">
+  <compiler angle="radian" coordinate="local" inertiafromgeom="true" settotalmass="8.0"/>
+
+  <default>
+    <joint armature=".001" damping="0.001" range = "-100 100" limited="true" solimplimit="0.96 0.96 0" solreflimit="0.002 1" stiffness="0"/>
+    <geom conaffinity="0" condim="3" contype="1" friction="1.5 .1 .1" rgba="0.8 0.6 .4 1" solimp="0.96 0.96 0" solref="0.002 1"/>
+    <motor ctrllimited="true" forcelimited="true"/>
+  </default>
+
+
+
+  <size nstack="300000" nuser_geom="1"/>
+  <option gravity="0 0 -9.81" timestep="0.001"/>
+  <!-- <option gravity="0 0 -0.1" timestep="0.01"/> -->
+  <asset>
+    <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
+    <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+    <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+    <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+    <material name="geom" texture="texgeom" texuniform="true"/>
+  </asset>
+
+
+  <worldbody>
+    <light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1"/>
+    <geom conaffinity="1" condim="3" material="MatPlane" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="40 40 40" type="plane"/>
+    
+
+    <body name="torso" pos="0 0 0.3">
+      <camera name="track" mode="trackcom" pos="0 -2 0.3" xyaxes="1 0 0 0 0 1"/>
+      <joint armature="0" axis="1 0 0" damping="0" limited="false" name="rootx" pos="0 0 0" stiffness="0" type="free"/>
+
+      <geom pos="0 0 0" name="torso" size="0.33 0.088 0.046" type="box"/>
+
+      <body name="fr" pos="0.23 0.175 0">
+        <joint axis="1 0 0" name="fr_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 1 0" name="fr_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 0 1" name="fr_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+
+        <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+      </body>
+
+      <body name="fl" pos="0.23 -0.175 0">
+        <joint axis="1 0 0" name="fl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 1 0" name="fl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 0 1" name="fl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+
+        <geom axisangle="0 1 0 0" name="fl" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+      </body>
+
+      <body name="br" pos="-0.23 0.175 0">
+        <joint axis="1 0 0" name="br_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 1 0" name="br_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 0 1" name="br_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+
+        <geom axisangle="0 1 0 0" name="br" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+      </body>
+
+      <body name="bl" pos="-0.23 -0.175 0">
+        <joint axis="1 0 0" name="bl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 1 0" name="bl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
+        <joint axis="0 0 1" name="bl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+
+        <geom axisangle="0 1 0 0" name="bl" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+      </body>
+
+
+
+  
+    </body>
+  </worldbody>
+
+
+
+  <actuator>
+    <motor gear="1" joint="fr_x" name="fr_x" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="fr_y" name="fr_y" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="fr_r" name="fr_r" forcerange="-200 200" ctrlrange="-200 200"/>
+
+    <motor gear="1" joint="fl_x" name="fl_x" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="fl_y" name="fl_y" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="fl_r" name="fl_r" forcerange="-200 200" ctrlrange="-200 200"/>
+
+    <motor gear="1" joint="br_x" name="br_x" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="br_y" name="br_y" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="br_r" name="br_r" forcerange="-200 200" ctrlrange="-200 200"/>
+
+    <motor gear="1" joint="bl_x" name="bl_x" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="bl_y" name="bl_y" forcerange="-12 12" ctrlrange="-12 12"/>
+    <motor gear="1" joint="bl_r" name="bl_r" forcerange="-200 200" ctrlrange="-200 200"/>
+  </actuator>
+</mujoco>
