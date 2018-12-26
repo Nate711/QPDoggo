@@ -32,7 +32,7 @@
 
   <size nstack="300000" nuser_geom="1"/>
   <option gravity="0 0 -9.81" timestep="0.001"/>
-  <!-- <option gravity="0 0 -0.1" timestep="0.01"/> -->
+  <!-- <option gravity="0 0 0" timestep="0.001"/> -->
   <asset>
     <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
     <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
@@ -54,38 +54,36 @@
       <geom pos="0 0 0" name="torso" size="0.33 0.088 0.046" type="box"/>
 
       <body name="fr" pos="0.23 0.175 0">
-        <joint axis="1 0 0" name="fr_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 1 0" name="fr_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 0 1" name="fr_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+        <joint axis="1 0 0" name="fr_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 1 0" name="fr_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 0 1" name="fr_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="2.0"/>
 
-        <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+        <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.3" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
       </body>
 
       <body name="fl" pos="0.23 -0.175 0">
-        <joint axis="1 0 0" name="fl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 1 0" name="fl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 0 1" name="fl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+        <joint axis="1 0 0" name="fl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 1 0" name="fl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 0 1" name="fl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="2.0"/>
 
-        <geom axisangle="0 1 0 0" name="fl" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+        <geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.3" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
       </body>
 
       <body name="br" pos="-0.23 0.175 0">
-        <joint axis="1 0 0" name="br_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 1 0" name="br_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 0 1" name="br_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+        <joint axis="1 0 0" name="br_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 1 0" name="br_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 0 1" name="br_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="2.0"/>
 
-        <geom axisangle="0 1 0 0" name="br" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+        <geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.3" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
       </body>
 
       <body name="bl" pos="-0.23 -0.175 0">
-        <joint axis="1 0 0" name="bl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 1 0" name="bl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="0.5"/>
-        <joint axis="0 0 1" name="bl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="1.0"/>
+        <joint axis="1 0 0" name="bl_x" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 1 0" name="bl_y" pos="0 0 0" limited="true" range="-3 3" type="hinge" damping="2.0"/>
+        <joint axis="0 0 1" name="bl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="2.0"/>
 
-        <geom axisangle="0 1 0 0" name="bl" fromto="0 0 0.1 0 0 -0.2" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
+        <geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.3" size="0.02" type="capsule" rgba = "1 0 0 0.5"/>
       </body>
-
-
 
   
     </body>
