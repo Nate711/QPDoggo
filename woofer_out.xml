@@ -1,23 +1,7 @@
-<!-- Cheetah Model
+<!-- Stanford Woofer Model
 
     The state space is populated with joints in the order that they are
-    defined in this file. The actuators also operate on joints.
-
-    State-Space (name/joint/parameter):
-        - rootx         slider    position (m)
-        - rootz         slider    position (m)
-        - rooty         hinge     angle (rad)
-        - ftangential   hinge     angle (rad)
-        - fradial       hinge     angle (rad)
-        - btangential   hinge     angle (rad)
-        - bradial       hinge     angle (rad)
-
-    Actuators (name/actuator/parameter):
-        - ftangential   hinge       angle command (rad)
-        - fradial       hinge       angle command (rad)
-        - btangential   hinge       angle command (rad)
-        - bradial       hinge       angle command (rad)
-
+    defined in this file. 
 -->
 <mujoco model="cheetah">
   <compiler angle="radian" coordinate="local" inertiafromgeom="true" settotalmass="8.0"/>
