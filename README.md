@@ -8,10 +8,9 @@ The goal of this project is to simulate a controller that uses whole-body PID an
 ```
 source activate [environment name]
 ```
-2. Install cvxpy
+2. Install OSQP
 ```
-conda install -c conda-forge lapack
-conda install -c cvxgrp cvxpy
+conda install -c oxfordcontrol osqp
 ```
 3. Install mujoco-py: https://github.com/openai/mujoco-py
 
@@ -22,7 +21,7 @@ python3 woofer_viz.py
 
 ## Details 
 ### Implementation 
-* QP solver: CVXPY
+* QP solver: OSQP
 * Simulator: Mujoco
 
 ### Lessons from "High-slope terrain locomotion for torque-controlled quadruped robots"
