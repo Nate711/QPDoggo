@@ -6,7 +6,7 @@ from os.path import expanduser
 ###### ROBOT PARAMETERS #####
 
 ## Solver params ##
-woofer_timestep = 0.001					# timestep
+woofer_timestep = 0.004					# timestep
 woofer_solref = woofer_timestep*2		# time constant for contacts
 woofer_armature = 0.0024				# armature for joints [kgm2]
 woofer_solimp = "0.9 0.95 0.001"	# contact parameter

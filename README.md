@@ -15,9 +15,9 @@ conda install -c cvxgrp cvxpy
 ```
 3. Install mujoco-py: https://github.com/openai/mujoco-py
 
-## Test
+## Run
 ```
-python3 qp_test.py
+python3 woofer_viz.py
 ```
 
 ## Details 

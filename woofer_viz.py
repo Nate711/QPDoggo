@@ -159,8 +159,8 @@ freq = 0.5
 
 
 # Simulation params
-timestep = 0.001
-timespan = 10
+timestep = 0.004
+timespan = 15
 
 for i in range(int(timespan/timestep)):
 	####### EXTRACT JOINT POSITIONS ######
@@ -194,8 +194,8 @@ for i in range(int(timespan/timestep)):
 	freq 		= 	0.5
 	phase 		= 	time * 2*math.pi*freq
 
-	o_ref 		= 	np.array([	math.sin(phase)*0.00,
-								math.cos(phase)*0.00,
+	o_ref 		= 	np.array([	math.sin(phase)*0.05,
+								math.cos(phase)*0.05,
 								0.25])
 	rpy_ref		= 	np.array([	math.sin(phase)*15*math.pi/180.0,
 								math.cos(phase)*15*math.pi/180.0,
