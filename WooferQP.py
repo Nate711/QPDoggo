@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import numpy as np
 import math
 
-from math_utils import CrossProductMatrix
+from MathUtils import CrossProductMatrix
 
 def AccelerationMatrix(q_feet):
 	"""
@@ -27,7 +27,7 @@ def AccelerationMatrix(q_feet):
 	return A
 
 
-def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.001, beta = 0, verbose=0):
+def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, verbose=0):
 	"""
 	Use OSQP to solve for feet forces. 
 
@@ -44,15 +44,18 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	max_vert_force = 133
 	min_vert_force = 1
 
-
-
 	A = AccelerationMatrix(q_feet)
 	b = reference_wrench
 
+	alpha_revolute	= alpha
+	alpha_prismatic = alpha * 0.10
+	P_alpha = np.diag([alpha_revolute, alpha_revolute, alpha_prismatic]*4)
+
 	# ||Ax-b||^2 = xT ATA x - 2ATb x + bTb = 0.5 * xT P x + qx + constant
 	# P = 2 * A'A, q = -2*A'b, constant = b'b
-	P = 2*np.matmul(A.T,A) + np.eye(12)*alpha
-	P = sparse.csc_matrix(P)
+	P_accuracy = 2*np.matmul(A.T,A)
+	P_dense = P_accuracy + P_alpha
+	P = sparse.csc_matrix(P_dense)
 	q = -2*np.dot(A.T,b)
 
 	mu_pyramid = mu/(2**0.5)
@@ -101,7 +104,7 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	res = prob.solve()
 
 	if verbose>0:
-		print('------------Four-foot test (stand)------------')
+		print('------------ QP Outputs ------------')
 		print('Desired acceleration')
 		print(b)
 		print('Foot forces:')
@@ -109,6 +112,12 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 		print('Status: %s'%res.info.status)
 		print('Actual accleration')
 		print(np.dot(A,res.x))
+
+
+		acc_cost 	= 0.5*np.dot(res.x,	np.dot(P_accuracy,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
+		force_cost 	= np.dot(res.x, 	np.dot(P_alpha, 	res.x))
+		print('Accuracy cost: %s \t Force cost: %s'%(acc_cost, force_cost))
+		print('\n')
 
 	return res.x
 
