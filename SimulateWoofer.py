@@ -27,31 +27,35 @@ The torques might be increasing because at larger alphas, there is a larger trac
 
 TODO: make inverse jacob
 """
+
+# Public modules
 from mujoco_py import load_model_from_path, MjSim, MjViewer, functions
 import numpy as np
 import math, time
-import woofer_xml_parser
 import rotations
-from MathUtils import CrossProductMatrix
-from WooferDynamics import *
-from JointSpaceController import JointSpaceController
-from BasicController import PropController
-from QPBalanceController import QPBalanceController
 
+# Custom modules
+from MathUtils 				import CrossProductMatrix
+from WooferDynamics 		import *
+from JointSpaceController 	import JointSpaceController
+from BasicController 		import PropController
+from QPBalanceController 	import QPBalanceController
+import WooferXMLParser
+
+# Tell Numpy not to print in decimal format rather than scientific
 np.set_printoptions(suppress=True)
 
-#### INITIALIZE MUJOCO ####
+#### Parse the MJCF XML model file ####
+WooferXMLParser.Parse()
+
+#### Initailize MuJoCo ####
 model = load_model_from_path("woofer_out.xml")
 print(model)
 sim = MjSim(model)
 viewer = MjViewer(sim)
 
 
-# Simulation params
-timestep = 0.004
-timespan = 15
-
-# Init variables to track maximum torques and forces
+# Initialize variables to track maximum torques and forces
 max_gen_torques = np.zeros(12)
 max_forces = np.zeros(12)
 
@@ -68,6 +72,10 @@ trot_controller.InitTrot(	freq			= 2.5,
 							extension_amp	= 0.1, 
 							kp_joint		= 80, 
 							kp_ext			= 500)
+
+# Simulation params
+timestep = 0.004
+timespan = 15
 
 for i in range(int(timespan/timestep)):
 	####### EXTRACT JOINT POSITIONS ######
@@ -95,17 +103,14 @@ for i in range(int(timespan/timestep)):
 
 	######## Trot Controller ######
 
-	(sim.data.ctrl[:], max_forces) = trot_controller.Update(qpos_joints, t)
+	# (sim.data.ctrl[:], max_forces) = trot_controller.Update(qpos_joints, t)
 
 	####### SIM and RENDER ######
 
 	if i % 1 == 50:
-		# input("Press Enter to continue...")
 		print("Frame: %s"%i)
 		print("Cartesian: %s"%xyz)
-		# print("Rotation matrix: %s"%rotmat)
 		print("Euler angles: %s"%rpy)
-		# print("Control outs: %s"%pid_output)
 		print("Max gen. torques: %s"%max_gen_torques)
 		print("Max forces: %s"%max_forces)
 		print("ref wrench: %s"%ref_wrench)

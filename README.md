@@ -16,13 +16,13 @@ conda install -c oxfordcontrol osqp
 
 ## Run
 ```
-python3 woofer_viz.py
+python3 SimulateWoofer.py
 ```
 
 ## Details 
 ### Implementation 
 * QP solver: OSQP
-* Simulator: Mujoco
+* Simulator: MuJoCo
 
 ### Lessons from "High-slope terrain locomotion for torque-controlled quadruped robots"
 * Minimize joint torques using W=JcS⊤WτSJc⊤, where W is the positive-definite used to regularize f in equation (6).
