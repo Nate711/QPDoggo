@@ -123,7 +123,7 @@ for i in range(i_range):
 		o_ref 		= 	np.array([	math.sin(phase)*0.00,
 									math.cos(phase)*0.0,
 									math.sin(phase)*0.0 + 0.32])
-		rpy_ref		= 	np.array([	math.sin(phase)*5*math.pi/180.0,
+		rpy_ref		= 	np.array([	math.sin(phase)*10*math.pi/180.0,
 									math.cos(phase)*5*math.pi/180.0+0*math.pi/180,
 									math.sin(phase)*0*math.pi/180.0])
 
@@ -136,24 +136,26 @@ for i in range(i_range):
 		### Calculate foot locations ###
 		feet_locations 	= WooferDynamics.LegForwardKinematics(quat_orien, joints)
 
-		### Use trot controller to schedule swing phase feet ###
-		(pd_torques,phase, refpos) = qp_trot_controller.Update(joints, t)
+		USE_QP_TROT = False
+		if USE_QP_TROT:
+			### Use trot controller to schedule swing phase feet ###
+			(pd_torques,phase, refpos) = qp_trot_controller.Update(joints, t)
+			### Calculate the feet that are in active stance
+			active_feet = (refpos[[2,5,8,11]] <= 0.02)*1
+		
+		else:
+			### Use dummy controller to move alternate legs upwards
+			dummy_controller = JointSpaceController(12,133,30,100)
+			(pd_torques) = dummy_controller.Update([0,0,0.08]*4, joints)
 
-		### Use dummy controller to move alternate legs upwards
-		dummy_controller = JointSpaceController(12,133,30,100)
-		(pd_torques) = dummy_controller.Update([0,0,0.05]*4, joints)
-
-		### Calculate the feet that are in active stance
-		active_feet = (refpos[[2,5,8,11]] <= 0.02)*1
-		# active_feet = np.logical_or(active_feet, contacts)
-		# disable trot controller
-		# active_feet = contacts
-		# override active feet for debug
-		# active_feet = np.array([1,1,1,1])
-		# causes more slip than if using actual contacts
-		# active_feet = np.array([1,0,0,1])
-		active_feet_exp = active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]]
-
+			# active_feet = np.logical_or(active_feet, contacts)
+			# disable trot controller
+			# active_feet = contacts
+			# override active feet for debug
+			# active_feet = np.array([1,1,1,1])
+			# causes more slip than if using actual contacts
+			active_feet = np.array([1,0,0,1])
+		
 		### Solve for torques ###
 		(qp_torques, foot_forces, ref_wrench) = qp_controller.Update(	(xyz, v_xyz, quat_orien, ang_vel, joints), 
 																	feet_locations, 
@@ -162,8 +164,9 @@ for i in range(i_range):
 																	rpy_ref)
 		# override torque for debugging
 		# torques = qp_torques
-
+		active_feet_exp = active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]]
 		torques = active_feet_exp*qp_torques + (1-active_feet_exp)*pd_torques
+
 		sim.data.ctrl[:] = torques
 		max_forces.Update(foot_forces)
 		max_torques.Update(torques)

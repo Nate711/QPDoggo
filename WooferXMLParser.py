@@ -29,8 +29,8 @@ def Parse():
 	woofer_joint_force_range = "-12 12"		# force range for ab/ad and forward/back angular joints
 	woofer_ext_force_range = "-200 200"		# force range for radial/extension joint
 	woofer_ext_range = "-0.18 0.18"			# joint range for radial/extension joint
-	woofer_rad_damping = 10 				# damping on radial/extension joint [N/m/s]
-	woofer_joint_damping = 0.5				# damping on ab/ad and f/b angular joints [Nm/rad/s]
+	woofer_rad_damping = 15 				# damping on radial/extension joint [N/m/s]
+	woofer_joint_damping = 0.2				# damping on ab/ad and f/b angular joints [Nm/rad/s]
 
 
 	###### FILE PATHS  #####
