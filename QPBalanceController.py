@@ -42,17 +42,19 @@ class QPBalanceController:
 		# Use a whole-body PD controller to generate desired body moments
 		### Cartesian force ###
 		wn_cart		= 20			# desired natural frequency
+		zeta_cart	= 0.8			# desired damping ratio
 		kp_cart 	= wn_cart**2 	# wn^2
-		kd_cart		= 2*wn_cart		# 2wn*zeta
+		kd_cart		= 2*wn_cart*zeta_cart		# 2wn*zeta
 		a_xyz 		= PropController(	xyz,	o_ref,	kp_cart) + \
 					  PropController(	v_xyz, 	0, 		kd_cart)
 		a_xyz	   += np.array([0,0,9.81])
 		f_xyz 		= woofer_mass * a_xyz
 		
 		### Angular moment ###
-		wn_ang 		= 40
+		wn_ang 		= 20
+		zeta_ang 	= 0.8
 		kp_ang 		= wn_ang**2
-		kd_ang		= 2*wn_ang
+		kd_ang		= 2*wn_ang*zeta_ang
 		a_rpy 		= PropController(	rpy,	rpy_ref,	kp_ang) + \
 					  PropController(	w_rpy,	0.0, 		kd_ang)			  
 		tau_rpy		= np.dot(woofer_inertia, a_rpy)

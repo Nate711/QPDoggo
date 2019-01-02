@@ -8,7 +8,7 @@
 
   <default>
     <joint armature="woofer_armature" solimplimit="woofer_solimp" solreflimit="woofer_solref 1" stiffness="0"/>
-    <geom conaffinity="0" condim="3" contype="1" friction="woofer_friction .1 .1" rgba="0.8 0.6 .4 1" solimp="woofer_solimp" solref="doggo_solref 1"/>
+    <geom conaffinity="0" condim="3" contype="1" friction="woofer_friction .1 .1" rgba="0.8 0.6 .4 1" solimp="woofer_solimp" solref="woofer_solref 1"/>
     <motor ctrllimited="true" forcelimited="true"/>
   </default>
 

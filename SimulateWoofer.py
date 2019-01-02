@@ -48,7 +48,7 @@ import rotations
 # Custom modules
 from MathUtils 				import CrossProductMatrix, RunningMax
 import WooferDynamics 		
-from JointSpaceController 	import JointSpaceController
+from JointSpaceController 	import JointSpaceController, TrotPDController
 from BasicController 		import PropController
 from QPBalanceController 	import QPBalanceController
 import WooferXMLParser
@@ -68,26 +68,18 @@ viewer = MjViewer(sim)
 # Initialize QP Balance Controller
 qp_controller = QPBalanceController()
 qp_controller.InitQPBalanceController(WooferDynamics.woofer_mass, WooferDynamics.woofer_inertia)
-qp_trot_controller = JointSpaceController(max_revolute_torque = 12, max_prismatic_force = 133)
-qp_trot_controller.InitTrot(	freq			= 2.0, 
-								angular_amp		= 0.0, 
-								extension_amp	= 0.1, 
-								kp_joint		= 80, 
-								kp_ext			= 200)
-
-
+qp_trot_controller = TrotPDController(	jsp=JointSpaceController(12,133,30,300),
+										freq = 2.0,
+										angular_amp=0, extension_amp=0.1)
 # Initialize Trot Controller
-trot_controller = JointSpaceController(	max_revolute_torque 	= 12, 
-										max_prismatic_force 	= 133)
-trot_controller.InitTrot(	freq			= 2.5, 
-							angular_amp		= 0.25, 
-							extension_amp	= 0.1, 
-							kp_joint		= 80, 
-							kp_ext			= 500)
+trot_controller = TrotPDController(	jsp=JointSpaceController(12,133,50,300),
+									freq=1.5,
+									angular_amp = 0.15, 
+									extension_amp = 0.1)
 
 # Simulation params
 timestep = 0.001
-timespan = 2
+timespan = 3
 i_range = int(timespan/timestep)
 
 # Initialize variables to track maximum torques and forces
@@ -104,64 +96,75 @@ force_history = np.zeros((12,i_range))
 ref_wrench_history = np.zeros((6,i_range))
 contacts_history = np.zeros((4,i_range))
 active_feet_history = np.zeros((4,i_range))
+smooth_contacts_history = np.zeros((4,i_range))
 
+contacts_smooth = np.ones(4)
+contacts_alpha 	= 0.8
 
 for i in range(i_range):
-
 	xyz 			= WooferDynamics.position(sim)
 	v_xyz 			= WooferDynamics.velocity(sim)
 	quat_orien 		= WooferDynamics.orientation(sim)
 	ang_vel 		= WooferDynamics.angular_velocity(sim)
 	joints 			= WooferDynamics.joints(sim)
-
-
-	rpy = rotations.quat2euler(quat_orien)
+	rpy 			= rotations.quat2euler(quat_orien)
 
 	t 	= i * timestep
 
 	if USE_QP:
 		# sim.data.qpos[0:3] = np.array([0,0,0.5])
 		# sim.data.qpos[3:7] = np.array([1,0,0,0])
+
 		######## QP BALANCE ########
-		
-		freq 		= 	2
+
+		### Generate reference trajectory ###
+		freq 		= 	1.0
 		phase 		= 	t * 2*math.pi*freq
 		o_ref 		= 	np.array([	math.sin(phase)*0.00,
 									math.cos(phase)*0.0,
 									math.sin(phase)*0.0 + 0.32])
-		rpy_ref		= 	np.array([	math.sin(phase)*0*math.pi/180.0,
-									math.cos(phase)*10*math.pi/180.0+0*math.pi/180,
-									math.sin(phase)*10*math.pi/180.0])
+		rpy_ref		= 	np.array([	math.sin(phase)*5*math.pi/180.0,
+									math.cos(phase)*5*math.pi/180.0+0*math.pi/180,
+									math.sin(phase)*0*math.pi/180.0])
 
+		### Calculate contacts ###
 		contacts 		= WooferDynamics.FeetContacts(sim)
-		feet_locations 	= WooferDynamics.LegForwardKinematics(quat_orien, joints)
+		contacts_smooth = contacts_alpha*contacts_smooth + (1-contacts_alpha)*contacts
+		# Using the smoothed contacts makes the slipping worse
+		# contacts 		= 1*(contacts_smooth>0.5)
 
+		### Calculate foot locations ###
+		feet_locations 	= WooferDynamics.LegForwardKinematics(quat_orien, joints)
 
 		### Use trot controller to schedule swing phase feet ###
 		(pd_torques,phase, refpos) = qp_trot_controller.Update(joints, t)
 
-		active_feet = (refpos[[2,5,8,11]] <= 0)*1
+		### Use dummy controller to move alternate legs upwards
+		dummy_controller = JointSpaceController(12,133,30,100)
+		(pd_torques) = dummy_controller.Update([0,0,0.05]*4, joints)
 
+		### Calculate the feet that are in active stance
+		active_feet = (refpos[[2,5,8,11]] <= 0.02)*1
+		# active_feet = np.logical_or(active_feet, contacts)
+		# disable trot controller
+		# active_feet = contacts
 		# override active feet for debug
 		# active_feet = np.array([1,1,1,1])
-		active_feet = contacts
-
+		# causes more slip than if using actual contacts
+		# active_feet = np.array([1,0,0,1])
 		active_feet_exp = active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]]
 
-
+		### Solve for torques ###
 		(qp_torques, foot_forces, ref_wrench) = qp_controller.Update(	(xyz, v_xyz, quat_orien, ang_vel, joints), 
 																	feet_locations, 
 																	active_feet, 
 																	o_ref, 
 																	rpy_ref)
 		# override torque for debugging
-		torques = qp_torques
+		# torques = qp_torques
 
-		# torques = active_feet_exp*qp_torques + (1-active_feet_exp)*pd_torques
-
-
+		torques = active_feet_exp*qp_torques + (1-active_feet_exp)*pd_torques
 		sim.data.ctrl[:] = torques
-
 		max_forces.Update(foot_forces)
 		max_torques.Update(torques)
 
@@ -180,6 +183,7 @@ for i in range(i_range):
 	ref_wrench_history[:,i] = ref_wrench
 	contacts_history[:,i] = contacts
 	active_feet_history[:,i] = active_feet
+	smooth_contacts_history[:,i] = contacts_smooth
 
 	####### SIM and RENDER ######
 
@@ -200,5 +204,10 @@ for i in range(i_range):
 	sim.step()
 	viewer.render()
 
-np.savez('SimulationData',th=torque_history, fh=force_history, rwh=ref_wrench_history, ch=contacts_history, afh=active_feet_history)
+np.savez('SimulationData',	th=torque_history, 
+							fh=force_history, 
+							rwh=ref_wrench_history, 
+							ch=contacts_history, 
+							afh=active_feet_history,
+							sch=smooth_contacts_history)
 

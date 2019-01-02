@@ -40,7 +40,7 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	"""
 	
 	## Params ##
-	max_horz_force = 40
+	max_horz_force = 133
 	max_vert_force = 133
 	min_vert_force = 1
 

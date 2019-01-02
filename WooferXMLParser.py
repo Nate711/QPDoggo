@@ -7,7 +7,7 @@ def Parse():
 
 	## Solver params ##
 	woofer_timestep = 0.001					# timestep
-	woofer_solref = woofer_timestep*2		# time constant for contacts
+	woofer_solref 	= 0.010					# time constant for contacts
 	woofer_armature = 0.0024				# armature for joints [kgm2]
 	woofer_solimp = "0.9 0.95 0.001"		# contact parameter
 
@@ -30,7 +30,7 @@ def Parse():
 	woofer_ext_force_range = "-200 200"		# force range for radial/extension joint
 	woofer_ext_range = "-0.18 0.18"			# joint range for radial/extension joint
 	woofer_rad_damping = 10 				# damping on radial/extension joint [N/m/s]
-	woofer_joint_damping = 0.1				# damping on ab/ad and f/b angular joints [Nm/rad/s]
+	woofer_joint_damping = 0.5				# damping on ab/ad and f/b angular joints [Nm/rad/s]
 
 
 	###### FILE PATHS  #####
