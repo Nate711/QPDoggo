@@ -23,23 +23,14 @@ woofer_inertia[0,0] = Ix
 woofer_inertia[1,1] = Iy
 woofer_inertia[2,2] = Iz
 
-def LegForwardKinematics(qpos):
+def LegForwardKinematics(quat_orientation, joints):
 	"""
 	Gives the cartesian coordinates of the four feet
 
-	qpos: Vector of generalized coordinates of the robot with entries:
-		[0:3] 	= x,y,z
-		[4:7] 	= unit quaternion orientation
-		[7:10]	= ab/ad, forward/back, radial for front right leg
-		[10:13]	= above for front left leg
-		[13:16] = above for back right leg
-		[16:19] = above for back left leg
+	quat_orientation:	unit quaternion for body orientation
+	joints: 			joint angles in qpos ordering
 	"""
 	
-
-	quat_orientation = qpos[3:7]
-	joints = qpos[7:]
-
 	def LegFK(abad, for_back, radial, handedness):
 		hands = {"left":1, "right":-1}
 		offset = hands[handedness]*(woofer_abduction_offset)
@@ -115,3 +106,13 @@ def FeetContacts(_sim):
 				contacts[3] = 1
 	return contacts
 
+def position(sim):
+	return sim.data.qpos[0:3]
+def velocity(sim):
+	return sim.data.qvel[0:3]
+def orientation(sim):
+	return sim.data.qpos[3:7]
+def angular_velocity(sim):
+	return sim.data.qvel[3:6]
+def joints(sim):
+	return sim.data.qpos[7:]

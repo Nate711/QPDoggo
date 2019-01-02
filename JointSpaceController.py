@@ -52,6 +52,5 @@ class JointSpaceController:
 		pid_output = PropController(qpos_joints, refpos, kp)
 		pid_output = np.clip(pid_output, 	[-self.max_joint_torque, -self.max_joint_torque, -self.max_ext_force]*4, 
 											[ self.max_joint_torque,  self.max_joint_torque,  self.max_ext_force]*4)
-		self.max_forces = np.maximum(self.max_forces, np.abs(pid_output))
 
-		return pid_output, self.max_forces
+		return pid_output, phase, refpos

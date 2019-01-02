@@ -7,54 +7,58 @@ class QPBalanceController:
 	def __init__(self):
 		self.max_forces = 0
 		self.max_gen_torques = 0
-
+		self.woofer_inertia = 0
+		self.woofer_mass = 0
+		self.ready = False
 	def InitQPBalanceController(self, woofer_mass, woofer_inertia):
 		self.woofer_inertia = woofer_inertia
 		self.woofer_mass = woofer_mass
+		self.ready = True
 
-	def Update(self, sim, o_ref, rpy_ref):
+	def Update(self, 	coordinates,
+						feet_locations, 
+						active_feet, 
+						o_ref, 
+						rpy_ref):
+		"""
+		Run the QP Balance controller
+		"""
+
+		(xyz, v_xyz, orientation, w_rpy, qpos_joints) = coordinates
+
+		if not self.ready:
+			return np.nan
+
 		########## Generate desired body accelerations ##########
-		qpos = sim.data.qpos[:]
-		qvel = sim.data.qvel[:]
-
-		# BODY ORIENTATION #
-		xyz 				= qpos[0:3]
-		orientation_quat 	= qpos[3:7]	
-		rotmat 				= rotations.quat2mat(orientation_quat)
-		rpy 				= rotations.mat2euler(rotmat)
-
-		v_xyz 				= qvel[0:3]
-		angular_vel 		= qvel[3:6]
-
-		qpos_joints = qpos[7:]
+		rpy = rotations.quat2euler(orientation)
+		rotmat = rotations.quat2mat(orientation)
 
 		# Foot Kinematics
-		feet_locations = LegForwardKinematics(qpos)
+		feet_locations = LegForwardKinematics(orientation, qpos_joints)
 
 		# Feet contact
-		contacts = FeetContacts(sim)
+		contacts = active_feet
 
 		# Use a whole-body PD controller to generate desired body moments
 		### Cartesian force ###
 		wn_cart		= 20			# desired natural frequency
 		kp_cart 	= wn_cart**2 	# wn^2
 		kd_cart		= 2*wn_cart		# 2wn*zeta
-		a_xyz 		= PropController(xyz,	o_ref,	kp_cart) + \
-					  PropController(v_xyz, 0, 		kd_cart)
+		a_xyz 		= PropController(	xyz,	o_ref,	kp_cart) + \
+					  PropController(	v_xyz, 	0, 		kd_cart)
 		a_xyz	   += np.array([0,0,9.81])
 		f_xyz 		= woofer_mass * a_xyz
 		
 		### Angular moment ###
-		wn_ang 		= 20
+		wn_ang 		= 40
 		kp_ang 		= wn_ang**2
 		kd_ang		= 2*wn_ang
-		a_rpy 		= PropController(	rpy,			rpy_ref,	kp_ang) + \
-					  PropController(	angular_vel,	0.0, 		kd_ang)			  
+		a_rpy 		= PropController(	rpy,	rpy_ref,	kp_ang) + \
+					  PropController(	w_rpy,	0.0, 		kd_ang)			  
 		tau_rpy		= np.dot(woofer_inertia, a_rpy)
 
 		### Combined force and moment ###
 		ref_wrench 	= np.concatenate([f_xyz, tau_rpy])
-
 
 
 		########## Solve for foot forces #########
@@ -77,7 +81,4 @@ class QPBalanceController:
 			joint_torques[f*3 : f*3 + 3] 	= np.dot(LegJacobian(beta, theta, r).T, foot_force_body)
 	
 
-		self.max_gen_torques 	= np.maximum(self.max_gen_torques, 	np.abs(joint_torques))
-		self.max_forces 		= np.maximum(self.max_forces, 		np.abs(feet_forces))
-
-		return (joint_torques, self.max_forces, self.max_gen_torques)
+		return (joint_torques, feet_forces, ref_wrench)
