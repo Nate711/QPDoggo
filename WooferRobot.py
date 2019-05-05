@@ -68,7 +68,8 @@ class WooferRobot():
 		self.state 		= self.state_estimator.update(sim)
 		self.contacts 	= self.contact_estimator.update(sim)
 
-
+		################################################## TODO ##################################
+		# TODO: take the gait planner out of this function
 		### Generate reference trajectory ###
 		freq 		= 	1.0
 		phase 		= 	self.t * 2*math.pi*freq
@@ -79,7 +80,8 @@ class WooferRobot():
 									math.cos(phase)*25*math.pi/180.0+0*math.pi/180,
 									math.sin(phase)*0*math.pi/180.0])
 
-		# Zero for now, but in the future the swing controller will provide these torques
+		################################################## TODO ##################################
+		# TODO. Zero for now, but in the future the swing controller will provide these torques
 		pd_torques = np.zeros(12)
 
 		# Rearrange the state for the qp solver
@@ -89,7 +91,9 @@ class WooferRobot():
 		self.feet_locations = WooferDynamics.LegForwardKinematics(self.state['q'], self.state['j'])
 
 		# Boolean representation of which feet the QP controller treats as in contact with the ground
-		# In the future the gait scheduler will set this variable
+		
+		################################################## TODO ##################################
+		# TODO: In the future the gait scheduler will set this variable
 		self.active_feet = np.array([1,1,1,1])
 
 		# Calculate foot forces using the QP solver
