@@ -25,7 +25,8 @@ woofer_inertia[2,2] = Iz
 
 def LegForwardKinematics(quat_orientation, joints):
 	"""
-	Gives the cartesian coordinates of the four feet
+	Gives the North-East-Down (NED)-style coordinates of the four feet. NED coordinates are coordinates in a noninertial reference frame
+	attached to the CoM of the robot. The axes of the NED frame are parallel to the x, y, and z axes in this simulation. 
 
 	quat_orientation:	unit quaternion for body orientation
 	joints: 			joint angles in qpos ordering
@@ -50,6 +51,17 @@ def LegForwardKinematics(quat_orientation, joints):
 	feet_col_stack = np.column_stack((foot_fr, foot_fl, foot_br, foot_bl))
 	feet_world = np.dot(rotations.quat2mat(quat_orientation), feet_col_stack)
 	return feet_world.T.reshape(12)
+
+def FootLocationsWorld(body_pos, quat_orien, joints):
+	"""
+	body_pos: 	3-vector xyz of the robot CoM
+	quat_orien: 4-vector quaternion orientation fo the robot torso
+	joints: 	12-vector of leg joint angles
+	"""
+
+	feet_locations_NED		= WooferDynamics.LegForwardKinematics(quat_orien, joints)
+	feet_locations_world 	= feet_locations_body + body_pos[[0,1,2,0,1,2,0,1,2,0,1,2]]
+	return feet_locations_world
 
 def LegJacobian(beta, theta, r, abaduction_offset = 0):
 	"""
@@ -116,3 +128,5 @@ def angular_velocity(sim):
 	return sim.data.qvel[3:6]
 def joints(sim):
 	return sim.data.qpos[7:]
+def joint_vel(sim):
+	return sim.data.qvel[6:]
