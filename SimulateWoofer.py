@@ -21,11 +21,11 @@ woofer = WooferRobot.MakeWoofer()
 """
 Run the simulation
 """
-for i in range(1000):
+for i in range(5000):
 	# Update the woofer robot code
 	tau = woofer.step(sim)
-	woofer.log_data()
-	woofer.print_data()
+	if i%50 == 0:
+		woofer.print_data()
 
 	# Update the mujoco simulation
 	sim.data.ctrl[:] = tau

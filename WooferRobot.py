@@ -34,19 +34,20 @@ class WooferRobot():
 		self.contacts 			= None
 
 
-		self.max_torques 				= RunningMax(12)
-		self.max_forces 				= RunningMax(12)
+		self.max_torques 		= RunningMax(12)
+		self.max_forces 		= RunningMax(12)
 
+		init_data_size = 1000
 		self.data = {}
-		self.data['torque_history'] 			= np.zeros((12,0))
-		self.data['force_history']				= np.zeros((12,0))
-		self.data['ref_wrench_history'] 		= np.zeros((6,0))
-		self.data['contacts_history'] 			= np.zeros((4,0))
-		self.data['active_feet_history'] 		= np.zeros((4,0))
-		self.data['contact_estimate_history']	= np.zeros((4,0))
+		self.data['torque_history'] 			= np.empty((12,init_data_size))
+		self.data['force_history']				= np.empty((12,init_data_size))
+		self.data['ref_wrench_history'] 		= np.empty((6,init_data_size))
+		self.data['contacts_history'] 			= np.empty((4,init_data_size))
+		self.data['active_feet_history'] 		= np.empty((4,init_data_size))
 
 		self.dt = dt
 		self.t = 0
+		self.i = 0
 
 	def step(self,sim):
 		"""
@@ -107,8 +108,12 @@ class WooferRobot():
 		self.max_forces.Update(self.foot_forces)
 		self.max_torques.Update(self.torques)
 
+		# Log stuff
+		self.log_data()
+
 		# Step time forward
 		self.t += self.dt
+		self.i += 1
 
 		return self.torques
 
@@ -116,13 +121,21 @@ class WooferRobot():
 		"""
 		Append data to logs
 		""" 
+		data_len = self.data['torque_history'].shape[1]
+		if self.i > data_len - 1:
+			self.data['torque_history'] 	= np.append(self.data['torque_history'], 		np.empty((12,1000)),axis=1)
+			self.data['force_history'] 		= np.append(self.data['force_history'], 		np.empty((12,1000)),axis=1)
+			self.data['ref_wrench_history'] = np.append(self.data['ref_wrench_history'], 	np.empty((6,1000)),axis=1)
+			self.data['contacts_history'] 	= np.append(self.data['contacts_history'], 		np.empty((4,1000)),axis=1)
+			self.data['active_feet_history']= np.append(self.data['active_feet_history'], 	np.empty((4,1000)),axis=1)
+
 		self.max_forces.Update(self.foot_forces)
 		self.max_torques.Update(self.torques)
-		np.append(self.data['torque_history'], self.torques)
-		np.append(self.data['force_history'], self.foot_forces)
-		np.append(self.data['ref_wrench_history'], self.ref_wrench)
-		np.append(self.data['contacts_history'], self.contacts)
-		np.append(self.data['active_feet_history'], self.active_feet)
+		self.data['torque_history'][:,self.i] 		= self.torques
+		self.data['force_history'][:,self.i] 		= self.foot_forces
+		self.data['ref_wrench_history'][:,self.i] 	= self.ref_wrench
+		self.data['contacts_history'][:,self.i] 	= self.contacts
+		self.data['active_feet_history'][:,self.i] 	= self.active_feet
 
 	def print_data(self):
 		"""
@@ -144,10 +157,11 @@ class WooferRobot():
 		"""
 		Save the log data to file
 		"""
-		np.savez('SimulationData',	th = self.data['torque_history'], 
-									fh = self.data['force_history'], 
+		print(self.data['torque_history'])
+		np.savez('SimulationData',	th 	= self.data['torque_history'], 
+									fh 	= self.data['force_history'], 
 									rwh = self.data['ref_wrench_history'], 
-									ch = self.data['contacts_history'], 
+									ch 	= self.data['contacts_history'], 
 									afh = self.data['active_feet_history'])
 
 def MakeWoofer():

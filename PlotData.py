@@ -9,7 +9,9 @@ force_history = data['fh']
 ref_wrench_history = data['rwh']
 contacts_history = data['ch']
 active_feet_history = data['afh']
-smooth_contacts_history = data['sch']
+# smooth_contacts_history = data['sch']
+
+print(torque_history)
 
 fig, (ax1, ax2,ax3,ax4,ax5) = plt.subplots(nrows=5, sharex=True)
 # fig, (ax1, ax2,ax3,ax4,ax5,ax6) = plt.subplots(nrows=6, sharex=True)
