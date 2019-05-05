@@ -1,6 +1,7 @@
 from mujoco_py import load_model_from_path, MjSim, MjViewer, functions
 import WooferXMLParser
 import WooferRobot
+import numpy as np
 
 
 """
@@ -21,14 +22,28 @@ woofer = WooferRobot.MakeWoofer()
 """
 Run the simulation
 """
-for i in range(5000):
-	# Update the woofer robot code
+timesteps = 3000
+
+# Latency options
+latency = 2 # ms of latency between torque computation and application at the joint
+control_rate = 1 # ms between updates (not in Hz)
+tau_history = np.zeros((12,timesteps))
+tau_noise = 0.5 # Nm
+
+for i in range(timesteps):
+	# Step the woofer controller and estimators forward
 	tau = woofer.step(sim)
+	tau_history[:,i] = tau
+
 	if i%50 == 0:
 		woofer.print_data()
 
-	# Update the mujoco simulation
-	sim.data.ctrl[:] = tau
+	# Run the control law according to the control rate
+	if i%control_rate == 0:
+		# Add latency and noise
+		# Note: Noise is only re-sampled when a new control is applied
+		sim.data.ctrl[:] = tau_history[:,max(0,i-latency)] + np.random.randn(12) * tau_noise
+
 	sim.step()
 	viewer.render()
 

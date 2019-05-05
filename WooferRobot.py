@@ -13,6 +13,7 @@ from BasicController 		import PropController
 from QPBalanceController 	import QPBalanceController
 from StateEstimator import MuJoCoStateEstimator
 from ContactEstimator import MuJoCoContactEstimator
+from GaitPlanner import StandingPlanner
 
 
 class WooferRobot():
@@ -22,7 +23,7 @@ class WooferRobot():
 	The primary input is the mujoco simulation data and the
 	primary output is a set joint torques. 
 	"""
-	def __init__(self, state_estimator, contact_estimator, qp_controller, dt):
+	def __init__(self, state_estimator, contact_estimator, qp_controller, gait_planner, dt):
 		"""
 		Initialize object variables
 		"""
@@ -30,6 +31,7 @@ class WooferRobot():
 		self.contact_estimator 	= contact_estimator
 		self.state_estimator 	= state_estimator
 		self.qp_controller 		= qp_controller # QP controller for calculating foot forces
+		self.gait_planner		= gait_planner
 		self.state 				= None
 		self.contacts 			= None
 
@@ -49,7 +51,7 @@ class WooferRobot():
 		self.t = 0
 		self.i = 0
 
-	def step(self,sim):
+	def step(self, sim):
 		"""
 		Get sensor data and update state estimate and contact estimate. Then calculate joint torques for locomotion.
 		
@@ -63,38 +65,26 @@ class WooferRobot():
 		Swing controller:
 		Swing controller needs reference foot landing positions and phase
 		"""
-
-		# Update the state and contact estimators
+		################################### State & contact estimation ###################################
 		self.state 		= self.state_estimator.update(sim)
 		self.contacts 	= self.contact_estimator.update(sim)
 
-		################################################## TODO ##################################
-		# TODO: take the gait planner out of this function
-		### Generate reference trajectory ###
-		freq 		= 	1.0
-		phase 		= 	self.t * 2*math.pi*freq
-		p_ref 		= 	np.array([	math.sin(phase)*0.00,
-									math.cos(phase)*0.00,
-									math.sin(phase)*0.00 + 0.32])
-		rpy_ref		= 	np.array([	math.sin(phase)*15*math.pi/180.0,
-									math.cos(phase)*25*math.pi/180.0+0*math.pi/180,
-									math.sin(phase)*0*math.pi/180.0])
+		################################### Gait planning ###################################
+		(feet_p, p_ref, rpy_ref, self.active_feet, phase) = self.gait_planner.update(self.state, self.contacts, self.t)
 
-		################################################## TODO ##################################
+
+		################################### Swing leg control ###################################
+		##################################### TODO ##################################
 		# TODO. Zero for now, but in the future the swing controller will provide these torques
 		pd_torques = np.zeros(12)
 
+
+		################################### QP force control ###################################
 		# Rearrange the state for the qp solver
 		qp_state = (self.state['p'],self.state['p_d'],self.state['q'],self.state['w'],self.state['j'])
 
 		# Use forward kinematics from the robot body to compute where the woofer feet are
 		self.feet_locations = WooferDynamics.LegForwardKinematics(self.state['q'], self.state['j'])
-
-		# Boolean representation of which feet the QP controller treats as in contact with the ground
-		
-		################################################## TODO ##################################
-		# TODO: In the future the gait scheduler will set this variable
-		self.active_feet = np.array([1,1,1,1])
 
 		# Calculate foot forces using the QP solver
 		(qp_torques, self.foot_forces, self.ref_wrench) = self.qp_controller.Update(qp_state, 
@@ -168,7 +158,7 @@ class WooferRobot():
 									ch 	= self.data['contacts_history'], 
 									afh = self.data['active_feet_history'])
 
-def MakeWoofer():
+def MakeWoofer(dt = 0.001):
 	"""
 	Create robot object
 	"""
@@ -176,8 +166,9 @@ def MakeWoofer():
 	mujoco_contact_est 	= MuJoCoContactEstimator()
 	qp_controller	 	= QPBalanceController()
 	qp_controller.InitQPBalanceController(WooferDynamics.woofer_mass, WooferDynamics.woofer_inertia)
+	gait_planner 		= StandingPlanner()
 
-	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, dt = 0.001)
+	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, dt = dt)
 
 	return woofer
 
