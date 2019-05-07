@@ -22,7 +22,7 @@ woofer = WooferRobot.MakeWoofer()
 """
 Run the simulation
 """
-timesteps = 3000
+timesteps = 1000
 
 # Latency options
 latency = 2 # ms of latency between torque computation and application at the joint
@@ -36,6 +36,7 @@ for i in range(timesteps):
 	tau_history[:,i] = tau
 
 	if i%50 == 0:
+		# pass
 		woofer.print_data()
 
 	# Run the control law according to the control rate

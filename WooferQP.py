@@ -27,7 +27,7 @@ def AccelerationMatrix(q_feet):
 	return A
 
 
-def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, verbose=0):
+def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, gamma = 100.0, verbose=0):
 	"""
 	Use OSQP to solve for feet forces. 
 
@@ -37,6 +37,34 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	mu 					: Friction coefficient
 	alpha				: Weight on normalizer for feet forces
 	beta				: Weight on smoothness between feet forces
+	gamma				: Scaling factor on angular acceleration deviations
+
+	OSQP uses an objective of the form:
+							 (1/2)x'Px + qx 
+	and linear ineq constraints:
+								 lb < Cx < ub
+
+	Our objective is to select foot forces that minimize the difference between the 
+	realized body acceleration and a desired body acceleration.
+
+	This is akin to:
+							Minimize ||Ax-b||^2
+	However, we want to prioritize angular stability of the body, so we use a quadratic norm of K:
+							Minimize [(Ax-b)'K(Ax-b)]
+
+
+	When expanded, it becomes:
+							Minimize x'A'KAx - 2A'Kbx + b'Kb
+	We can write in the OSPQ form with the following substitutions
+							P = 2A'KA
+							q = -2A'Kb
+
+	We also want to minimize the norm of x and so the final objective is
+							Minimize x'(A'KA + R)x -A'Kbx
+							P = 2(A'KA + R)
+							q = -2A'Kb
+
+	in the code A'KA is called P0, and R is R
 	"""
 	
 	## Params ##
@@ -47,21 +75,27 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	A = AccelerationMatrix(q_feet)
 	b = reference_wrench
 
+	# Construct normalizer matrix R
 	alpha_revolute	= alpha
 	alpha_prismatic = alpha * 0.10
-	P_alpha = np.diag([alpha_revolute, alpha_revolute, alpha_prismatic]*4)
+	R = np.diag([alpha_revolute, alpha_revolute, alpha_prismatic]*4)
 
-	# ||Ax-b||^2 = xT ATA x - 2ATb x + bTb = 0.5 * xT P x + qx + constant
-	# P = 2 * A'A, q = -2*A'b, constant = b'b
-	P_accuracy = 2*np.matmul(A.T,A)
-	P_dense = P_accuracy + P_alpha
+	# Construct quadratic norm matrix K
+	K = np.diag([1,1,1,gamma,gamma,gamma])
+
+	# Construct P0
+	P0 = np.matmul(A.T,np.matmul(K, A))
+
+	# Construct the final P matrix
+	P_dense = 2*(P0 + R)
 	P = sparse.csc_matrix(P_dense)
-	q = -2*np.dot(A.T,b)
 
+	# Construct the linear term q
+	q = -2*np.matmul(A.T,np.matmul(K, b))
+
+	# Set up the inequality constraints with matrix X
 	mu_pyramid = mu/(2**0.5)
 	# cone: fx^2+fy^2 <= mu^2 * fz^2
-	# pyramid: 
-	# Inequality/equality matrix
 	C = np.zeros((28,12))
 
 	# Enforce friction pyramid constraints on all 4 feet
@@ -114,8 +148,8 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 		print(np.dot(A,res.x))
 
 
-		acc_cost 	= 0.5*np.dot(res.x,	np.dot(P_accuracy,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
-		force_cost 	= np.dot(res.x, 	np.dot(P_alpha, 	res.x))
+		acc_cost 	= np.matmul(res.x,	np.matmul(P0,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
+		force_cost 	= np.dot(res.x, 	np.dot(R, 	res.x))
 		print('Accuracy cost: %s \t Force cost: %s'%(acc_cost, force_cost))
 		print('\n')
 

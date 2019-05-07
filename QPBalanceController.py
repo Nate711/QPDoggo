@@ -48,7 +48,7 @@ class QPBalanceController:
 		a_xyz 		= PropController(	xyz,	o_ref,	kp_cart) + \
 					  PropController(	v_xyz, 	0, 		kd_cart)
 		a_xyz	   += np.array([0,0,9.81])
-		f_xyz 		= woofer_mass * a_xyz
+		f_xyz 		= self.woofer_mass * a_xyz
 		
 		### Angular moment ###
 		wn_ang 		= 20
@@ -57,7 +57,7 @@ class QPBalanceController:
 		kd_ang		= 2*wn_ang*zeta_ang
 		a_rpy 		= PropController(	rpy,	rpy_ref,	kp_ang) + \
 					  PropController(	w_rpy,	0.0, 		kd_ang)			  
-		tau_rpy		= np.dot(woofer_inertia, a_rpy)
+		tau_rpy		= np.dot(self.woofer_inertia, a_rpy)
 
 		### Combined force and moment ###
 		ref_wrench 	= np.concatenate([f_xyz, tau_rpy])
@@ -66,7 +66,7 @@ class QPBalanceController:
 		########## Solve for foot forces #########
 
 		# Find foot forces to achieve the desired body moments
-		feet_forces = SolveFeetForces(feet_locations, contacts, ref_wrench, mu = 1.0, alpha=1e-3, verbose=0)
+		feet_forces = SolveFeetForces(feet_locations, contacts, ref_wrench, mu = 1.0, alpha=1e-3, verbose=1)
 
 		joint_torques = np.zeros(12)
 		

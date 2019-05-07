@@ -1,55 +1,68 @@
-import WooferDynamics 		
-import rotations
+import numpy as np
+import WooferDynamics
+from math import pi, sin
 
 class SwingLegController:
-	def __init__(self):
-		pass
-	
-	def GeneralTrackingController(self, q, qd, qdd, q_ref, qd_ref, Kp, Kd):
+	def update(self, state, contacts, step_phase):
+		raise NotImplementedError
+
+class ZeroSwingLegController(SwingLegController):
+	"""
+	Placeholder class
+	"""
+	def update(self, state, contacts, step_phase):
+		return np.zeros(12)
+
+class PDSwingLegController(SwingLegController):
+	"""
+	Computes joint torques to bring the swing legs to their new locations
+	"""
+
+	def trajectory(self, state, step_phase, step_locs, p_step_locs, active_feet, STEP_HEIGHT = 0.08):
 		"""
-		Output torques to track a given trajectory using a combination of feed forward and PD. Operates on ONE trajectory only. 
-		q:   trajectory xyz coordinates in the world frame
-		qd:  trajectory velocity
-		qdd: trajectory acceleration
-		"""
+		sin2-based parametric trajectory planner
 
-		# Leg dynamics parameters
-		H = 0.250 	# leg inertia [kg]
-		C = 0.0 	# leg coriolis term 
-		G = 0		# position dependent terms
-
-		g = np.array([0,0,-9.81])
-		F_ext = g
-
-		# Feed forward force in xy world coordinates
-		F_ff = H * qdd - F_ext
-		F_pd = Kp * (q_ref - q) + Kd * (qd_ref - qd)
-		F_world = F_ff + F_pd
-		return F_world
-
-	def ForceToJointTorques(sef, F_world, leg_joints, body_orientation):
-		"""
-		leg_joints: 3-vector
+		STEP_HEIGHT: maximum ground clearance during the foot step (in meters)
 		"""
 
-		# Transform into body coordinates
-		F_body = rotations.quat2mat(body_orientation).T * F_world
+		# smooth interpolation between 0 and 1 (with respect to time)
+		incrementer = (sin(step_phase * pi/2.0))**2
 
-		# Transform into joint torques
-		(beta,theta,r) = tuple(leg_joints)
-		joint_torques  = (WooferDynamics.LegJacobian(beta, theta, r, abaduction_offset = 0)).T * F_body
-		
-		return joint_torques
+		# ground plane interpolation between previous step locations and new step locations
+		ground_plane_foot_reference = step_locs * incrementer + (1-incrementer) * p_step_locs
 
-	def TrajectoryPlanner(self):
-		"""
-		Given the current foot 
-		"""
-		pass
+		# foot heights
+		foot_heights = np.zeros(12)
+		foot_heights[[2,5,8,11]] = STEP_HEIGHT * (sin(step_phase * pi))**2
 
-	def RaibertHeuristic(self, state):
-		"""
-		Use raibert heuristics to plan footstep locations given the current velocity and desired velocity
-		"""
-		pass
+		# combine ground plane interp and foot heights
+		swing_foot_reference_p = ground_plane_foot_reference + foot_heights
+
+		# print(feet_world_NED)
+		# print(swing_foot_reference_p)
+		# print(" ")
+
+		return swing_foot_reference_p
+
+	def update(self, state, step_phase, step_locs, p_step_locs, active_feet, KP = 500):
+		reference_positions = self.trajectory(state, step_phase, step_locs, p_step_locs, active_feet)
+
+		feet_world_NED = WooferDynamics.FootLocationsWorld(state)
+
+		errors = reference_positions - feet_world_NED
+		foot_forces = KP * errors
+
+		leg_torques = np.zeros(12)
+		for i in range(4):
+			if active_feet[i] == 0:
+				specific_foot_force = foot_forces[3*i:3*i+3]
+				specific_leg_joints = state['j'][3*i:3*i+3]
+				leg_torques[3*i:3*i+3] = WooferDynamics.FootForceToJointTorques(specific_foot_force, specific_leg_joints, state['q'], abaduction_offset = 0)
+
+		# print(leg_torques, reference_positions)
+		# print(" ")
+		return leg_torques, reference_positions
+
+
+
 

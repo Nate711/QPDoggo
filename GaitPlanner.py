@@ -1,5 +1,11 @@
 import numpy as np
 from math import pi, cos, sin
+from WooferDynamics import WOOFER_LEG_L, WOOFER_LEG_LR, WOOFER_LEG_FB
+
+"""
+Note:
+Order of legs is: FR, FL, BR, BL
+"""
 
 class GaitPlanner:
 	"""
@@ -10,7 +16,7 @@ class GaitPlanner:
 		Output CoM trajectory and foot placements
 		"""
 		raise NotImplementedError
-		return (None, None, None, None) # Foot placements, CoM ref position, body ref orientation (euler), active_feet, phase
+		return (None, None, None, None, None, None) # Foot placements, CoM ref position, body ref orientation (euler), active_feet, phase
 
 class StandingPlanner(GaitPlanner):
 	"""
@@ -30,4 +36,91 @@ class StandingPlanner(GaitPlanner):
 		# A 1 in the ith slot means that the ith leg is in contact with the ground
 		active_feet = np.array([1,1,1,1])
 
-		return (None, p_ref, rpy_ref, active_feet, phase)
+		return (None, None, p_ref, rpy_ref, active_feet, phase)
+
+class StepPlanner(GaitPlanner):
+	"""
+	Plans two walking-trot steps forward. During the first half of the stride, 
+	the front-left and back-right legs are planned to be in stance. During the
+	second half of the stride, the front-right and back-left legs are planned
+	to be in stance. After the full stride, all legs are planned for stance.
+	"""
+
+	
+	def update(self, state, contacts, t, STEP_LENGTH = 0.15, D = 0.6):
+		"""
+		STEP_LENGTH: step length in meters
+		D: duration of the total two-step move in seconds
+
+		phase: 0->0.5 & step_phase 0->1: moving FR and BL forward
+		phase: 0.5 -> 1 & step_phase 0->1: moving FL and BR forward
+
+		Note that the foot placements vector is only used as reference positions for the swing controller
+		which means that the reference foot placements are meaningless for legs in contact
+		"""
+
+		# stride starts at phase = 0 and ends at phase = 1
+		phase = t/D
+
+		foot_locs = np.array([ WOOFER_LEG_FB, -WOOFER_LEG_LR, 0,
+									 WOOFER_LEG_FB,  WOOFER_LEG_LR, 0,
+								 	-WOOFER_LEG_FB, -WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB,  WOOFER_LEG_LR, 0])
+		p_foot_locs = foot_locs
+
+		active_feet = np.array([1,1,1,1])
+
+		step_phase = 0
+
+		if phase >= 0 and phase < 0.5:
+			# Move FR and BL forward
+			foot_locs = np.array([ 	WOOFER_LEG_FB + STEP_LENGTH,	-WOOFER_LEG_LR, 0,
+									WOOFER_LEG_FB, 					 WOOFER_LEG_LR, 0,
+								 	-WOOFER_LEG_FB, 				-WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB + STEP_LENGTH,	 WOOFER_LEG_LR, 0])
+			
+			p_foot_locs = np.array([WOOFER_LEG_FB,  -WOOFER_LEG_LR, 0,
+													 WOOFER_LEG_FB,  WOOFER_LEG_LR, 0,
+								 					-WOOFER_LEG_FB, -WOOFER_LEG_LR, 0,
+													-WOOFER_LEG_FB,  WOOFER_LEG_LR, 0])
+			active_feet = np.array([0,1,1,0])
+			
+			step_phase = phase * 2.0
+			
+		elif phase >= 0.5 and phase < 1.0:
+			# Move FL and BR forward
+			foot_locs = np.array([	WOOFER_LEG_FB + STEP_LENGTH,   -WOOFER_LEG_LR, 0,
+									WOOFER_LEG_FB + STEP_LENGTH,    WOOFER_LEG_LR, 0,
+								 	-WOOFER_LEG_FB + STEP_LENGTH,  -WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB + STEP_LENGTH,  	WOOFER_LEG_LR, 0])
+			p_foot_locs = np.array([ WOOFER_LEG_FB + STEP_LENGTH, 	-WOOFER_LEG_LR, 0,
+									 WOOFER_LEG_FB, 				 WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB, 				-WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB + STEP_LENGTH, 	 WOOFER_LEG_LR, 0])
+			active_feet = np.array([1,0,0,1])
+
+			step_phase = (phase - 0.5) * 2.0
+
+		elif phase >= 1.0:
+			# All feet are forward
+			foot_locs = np.array([ 	 WOOFER_LEG_FB + STEP_LENGTH, -WOOFER_LEG_LR, 0,
+									 WOOFER_LEG_FB + STEP_LENGTH,  WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB + STEP_LENGTH, -WOOFER_LEG_LR, 0,
+									-WOOFER_LEG_FB + STEP_LENGTH,  WOOFER_LEG_LR, 0])
+			p_foot_locs = foot_locs
+
+			active_feet = np.array([1,1,1,1])
+
+			step_phase = 0.0
+
+		# Want body to be level during the step
+		rpy_ref = np.array([0,0,0])
+
+		# Want the body to move forward one step length
+		CoM_x = STEP_LENGTH * np.clip(phase,0,1) 
+		p_ref = np.array([CoM_x, 0, WOOFER_LEG_L])
+
+		# print("foot placements:")
+		# print(foot_locs)
+
+		return (foot_locs, p_foot_locs, p_ref, rpy_ref, active_feet, phase, step_phase)

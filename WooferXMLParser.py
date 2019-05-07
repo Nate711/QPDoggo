@@ -1,6 +1,7 @@
 import os
 import shutil
 from os.path import expanduser
+from WooferConfig import *
 
 def Parse():
 	###### ROBOT PARAMETERS #####
@@ -12,17 +13,13 @@ def Parse():
 	woofer_solimp = "0.9 0.95 0.001"		# contact parameter
 
 	## Geometry params ##
-	woofer_mass = 8.0						# total robot mass
 	woofer_leg_radius = 0.02 				# radius of leg capsule
 	woofer_friction = 1.0					# friction between legs and ground
-	woofer_half_size = "0.33 0.088 0.046"	# half-size of body box
-	woofer_leg_fb = 0.23 					# front-back distance from center line to leg axis
-	woofer_leg_lr = 0.175 					# left-right distance from center line to leg plane
+	woofer_half_size = "%s %s %s"%(WOOFER_L/2, WOOFER_W/2, WOOFER_T/2) # half-size of body box
 
-	leg_l = 0.32							# nominal length of the robot leg
-	woofer_leg_geom = "0 0 0 0 0 %s"%(-leg_l)	# to-from leg geometry
+	woofer_leg_geom = "0 0 0 0 0 %s"%(-WOOFER_LEG_L) # to-from leg geometry
 
-	woofer_start_position = "0 0 %s"%(leg_l + woofer_leg_radius)	# Initial position of the robot torso
+	woofer_start_position = "0 0 %s"%(WOOFER_LEG_L + woofer_leg_radius)	# Initial position of the robot torso
 
 	## Joint params ##
 	woofer_joint_range = "-3 3"				# joint range in rads for angular joints
@@ -70,11 +67,11 @@ def Parse():
 
 
 	# Geometry specs
-	filedata = filedata.replace('woofer_mass', str(woofer_mass))
+	filedata = filedata.replace('woofer_mass', str(WOOFER_MASS))
 	filedata = filedata.replace('woofer_leg_radius', str(woofer_leg_radius))
 	filedata = filedata.replace('woofer_half_size', str(woofer_half_size))
-	filedata = filedata.replace('woofer_leg_fb', str(woofer_leg_fb))
-	filedata = filedata.replace('woofer_leg_lr', str(woofer_leg_lr))
+	filedata = filedata.replace('woofer_leg_fb', str(WOOFER_LEG_FB))
+	filedata = filedata.replace('woofer_leg_lr', str(WOOFER_LEG_LR))
 	filedata = filedata.replace("woofer_leg_geom", str(woofer_leg_geom))
 	filedata = filedata.replace("woofer_start_position", str(woofer_start_position))
 
