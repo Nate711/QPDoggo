@@ -1,6 +1,6 @@
 import numpy as np
 import rotations
-from WooferConfig import *
+from WooferConfig import WOOFER_CONFIG
 
 def LegForwardKinematics(quat_orientation, joints):
 	"""
@@ -13,18 +13,18 @@ def LegForwardKinematics(quat_orientation, joints):
 	
 	def LegFK(abad, for_back, radial, handedness):
 		hands = {"left":1, "right":-1}
-		offset = hands[handedness]*(WOOFER_ABDUCTION_OFFSET)
-		leg_unrotated = np.array([0, offset, -WOOFER_LEG_L + radial])
+		offset = hands[handedness]*(WOOFER_CONFIG.ABDUCTION_OFFSET)
+		leg_unrotated = np.array([0, offset, -WOOFER_CONFIG.LEG_L + radial])
 		R = rotations.euler2mat([abad, for_back, 0])	# rotation matrix for abduction, then forward back
 		foot = np.dot(R,leg_unrotated)
 		return foot
 	
 	# Get foot locations in local body coordinates
 	# Right-handedness of frame means y is positive in the LEFT direction
-	foot_fr = LegFK(joints[0], joints[1], joints[2], "right") + np.array([WOOFER_LEG_FB, -WOOFER_LEG_LR, 0])
-	foot_fl = LegFK(joints[3], joints[4], joints[5], "left")  + np.array([WOOFER_LEG_FB, WOOFER_LEG_LR, 0])
-	foot_br = LegFK(joints[6], joints[7], joints[8], "right") + np.array([-WOOFER_LEG_FB, -WOOFER_LEG_LR, 0])
-	foot_bl = LegFK(joints[9], joints[10],joints[11],"left")  + np.array([-WOOFER_LEG_FB, WOOFER_LEG_LR, 0])
+	foot_fr = LegFK(joints[0], joints[1], joints[2], "right") + np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	foot_fl = LegFK(joints[3], joints[4], joints[5], "left")  + np.array([WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+	foot_br = LegFK(joints[6], joints[7], joints[8], "right") + np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	foot_bl = LegFK(joints[9], joints[10],joints[11],"left")  + np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
 	# Transform into world coordinates (centered around robot COM)
 	feet_col_stack = np.column_stack((foot_fr, foot_fl, foot_br, foot_bl))
@@ -56,7 +56,7 @@ def LegJacobian(beta, theta, r, abaduction_offset = 0):
 	k = np.array([0,0,1])
 
 	# leg pointing straight down
-	unrotated = np.array([0,abaduction_offset,-WOOFER_LEG_L + r]) 	
+	unrotated = np.array([0,abaduction_offset,-WOOFER_CONFIG.LEG_L + r]) 	
 	# vector from leg hub to foot in body coordinates
 	p = np.dot(rotations.euler2mat([beta, theta, 0]), unrotated) 
 

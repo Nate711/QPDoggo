@@ -15,8 +15,9 @@ from QPBalanceController 	import QPBalanceController
 from StateEstimator 		import MuJoCoStateEstimator
 from ContactEstimator 		import MuJoCoContactEstimator
 from GaitPlanner 			import StandingPlanner, StepPlanner
-from WooferConfig 			import WOOFER_MASS, WOOFER_INERTIA
 from SwingLegController		import PDSwingLegController, ZeroSwingLegController
+
+from WooferConfig import WOOFER_CONFIG, QP_CONFIG, SWING_CONTROLLER_CONFIG, GAIT_PLANNER_CONFIG
 
 class WooferRobot():
 	"""
@@ -87,7 +88,10 @@ class WooferRobot():
 		(self.step_locations, self.p_step_locations, \
 		 p_ref, rpy_ref, self.active_feet, self.phase, self.step_phase) = self.gait_planner.update(	self.state, 
 																									self.contacts, 
-																									self.t)
+																									self.t,
+																									WOOFER_CONFIG,
+																									GAIT_PLANNER_CONFIG)
+		# print("phase: %s"%self.phase)
 
 		################################### Swing leg control ###################################
 		# TODO. Zero for now, but in the future the swing controller will provide these torques
@@ -95,7 +99,9 @@ class WooferRobot():
 																					self.step_phase, 
 																					self.step_locations,
 																					self.p_step_locations, 
-																					self.active_feet)
+																					self.active_feet,
+																					WOOFER_CONFIG,
+																					SWING_CONTROLLER_CONFIG)
 
 		################################### QP force control ###################################
 		# Rearrange the state for the qp solver
@@ -113,7 +119,9 @@ class WooferRobot():
 																					self.feet_locations, 
 																					self.active_feet, 
 																					p_ref, 
-																					rpy_ref)
+																					rpy_ref,
+																					WOOFER_CONFIG,
+																					QP_CONFIG)
 		# Expanded version of active feet
 		active_feet_12 = self.active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]] 
 
@@ -178,7 +186,6 @@ class WooferRobot():
 		with open('woofer_logs.pickle', 'wb') as handle:
 			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-
 def MakeWoofer(dt = 0.001):
 	"""
 	Create robot object
@@ -186,7 +193,6 @@ def MakeWoofer(dt = 0.001):
 	mujoco_state_est 	= MuJoCoStateEstimator()
 	mujoco_contact_est 	= MuJoCoContactEstimator()
 	qp_controller	 	= QPBalanceController()
-	qp_controller.InitQPBalanceController(WOOFER_MASS, WOOFER_INERTIA)
 	# gait_planner 		= StandingPlanner()
 	gait_planner 		= StepPlanner()
 	swing_controller	= PDSwingLegController()

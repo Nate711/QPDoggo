@@ -7,27 +7,20 @@ class QPBalanceController:
 	def __init__(self):
 		self.max_forces = 0
 		self.max_gen_torques = 0
-		self.woofer_inertia = 0
-		self.woofer_mass = 0
-		self.ready = False
-	def InitQPBalanceController(self, woofer_mass, woofer_inertia):
-		self.woofer_inertia = woofer_inertia
-		self.woofer_mass = woofer_mass
-		self.ready = True
 
-	def Update(self, 	coordinates,
-						feet_locations, 
-						active_feet, 
-						o_ref, 
-						rpy_ref):
+	def Update(self,coordinates,
+					feet_locations, 
+					active_feet, 
+					o_ref, 
+					rpy_ref,
+					woof_config,
+					qp_config,
+					verbose = 0):
 		"""
 		Run the QP Balance controller
 		"""
 
 		(xyz, v_xyz, orientation, w_rpy, qpos_joints) = coordinates
-
-		if not self.ready:
-			return np.nan
 
 		########## Generate desired body accelerations ##########
 		rpy = rotations.quat2euler(orientation)
@@ -48,7 +41,7 @@ class QPBalanceController:
 		a_xyz 		= PropController(	xyz,	o_ref,	kp_cart) + \
 					  PropController(	v_xyz, 	0, 		kd_cart)
 		a_xyz	   += np.array([0,0,9.81])
-		f_xyz 		= self.woofer_mass * a_xyz
+		f_xyz 		= woof_config.MASS * a_xyz
 		
 		### Angular moment ###
 		wn_ang 		= 20
@@ -57,7 +50,7 @@ class QPBalanceController:
 		kd_ang		= 2*wn_ang*zeta_ang
 		a_rpy 		= PropController(	rpy,	rpy_ref,	kp_ang) + \
 					  PropController(	w_rpy,	0.0, 		kd_ang)			  
-		tau_rpy		= np.dot(self.woofer_inertia, a_rpy)
+		tau_rpy		= np.matmul(woof_config.INERTIA, a_rpy)
 
 		### Combined force and moment ###
 		ref_wrench 	= np.concatenate([f_xyz, tau_rpy])
@@ -66,7 +59,13 @@ class QPBalanceController:
 		########## Solve for foot forces #########
 
 		# Find foot forces to achieve the desired body moments
-		feet_forces = SolveFeetForces(feet_locations, contacts, ref_wrench, mu = 1.0, alpha=1e-3, verbose=1)
+		feet_forces = SolveFeetForces(	feet_locations, 
+										contacts, 
+										ref_wrench, 
+										mu = qp_config.MU, 
+										alpha = qp_config.ALPHA, 
+										gamma = qp_config.GAMMA, 
+										verbose = verbose)
 
 		joint_torques = np.zeros(12)
 		
@@ -76,7 +75,7 @@ class QPBalanceController:
 
 			# Transform from world to body frames, 
 			# The negative sign makes it the force exerted by the body
-			foot_force_body 				= - np.dot(rotmat.T, foot_force_world)
+			foot_force_body 				= -np.dot(rotmat.T, foot_force_world)
 			(beta,theta,r) 					= tuple(qpos_joints[f*3 : f*3 + 3])
 			
 			# Transform from body frame forces into joint torques

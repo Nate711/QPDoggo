@@ -92,20 +92,20 @@
 
 
   <actuator>
-    <motor gear="1" joint="fr_x" name="fr_x" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="fr_y" name="fr_y" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="fr_r" name="fr_r" forcerange="-200 200" ctrlrange="-200 200"/>
+    <motor gear="1" joint="fr_x" name="fr_x" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="fr_y" name="fr_y" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="fr_r" name="fr_r" forcerange="-133 133" ctrlrange="-133 133"/>
 
-    <motor gear="1" joint="fl_x" name="fl_x" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="fl_y" name="fl_y" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="fl_r" name="fl_r" forcerange="-200 200" ctrlrange="-200 200"/>
+    <motor gear="1" joint="fl_x" name="fl_x" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="fl_y" name="fl_y" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="fl_r" name="fl_r" forcerange="-133 133" ctrlrange="-133 133"/>
 
-    <motor gear="1" joint="br_x" name="br_x" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="br_y" name="br_y" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="br_r" name="br_r" forcerange="-200 200" ctrlrange="-200 200"/>
+    <motor gear="1" joint="br_x" name="br_x" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="br_y" name="br_y" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="br_r" name="br_r" forcerange="-133 133" ctrlrange="-133 133"/>
 
-    <motor gear="1" joint="bl_x" name="bl_x" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="bl_y" name="bl_y" forcerange="-12 12" ctrlrange="-12 12"/>
-    <motor gear="1" joint="bl_r" name="bl_r" forcerange="-200 200" ctrlrange="-200 200"/>
+    <motor gear="1" joint="bl_x" name="bl_x" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="bl_y" name="bl_y" forcerange="-8 8" ctrlrange="-8 8"/>
+    <motor gear="1" joint="bl_r" name="bl_r" forcerange="-133 133" ctrlrange="-133 133"/>
   </actuator>
 </mujoco>

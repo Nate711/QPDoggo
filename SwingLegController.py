@@ -18,7 +18,7 @@ class PDSwingLegController(SwingLegController):
 	Computes joint torques to bring the swing legs to their new locations
 	"""
 
-	def trajectory(self, state, step_phase, step_locs, p_step_locs, active_feet, STEP_HEIGHT = 0.08):
+	def trajectory(self, state, step_phase, step_locs, p_step_locs, active_feet, swing_config):
 		"""
 		sin2-based parametric trajectory planner
 
@@ -33,7 +33,7 @@ class PDSwingLegController(SwingLegController):
 
 		# foot heights
 		foot_heights = np.zeros(12)
-		foot_heights[[2,5,8,11]] = STEP_HEIGHT * (sin(step_phase * pi))**2
+		foot_heights[[2,5,8,11]] = swing_config.STEP_HEIGHT * (sin(step_phase * pi))**2
 
 		# combine ground plane interp and foot heights
 		swing_foot_reference_p = ground_plane_foot_reference + foot_heights
@@ -44,13 +44,13 @@ class PDSwingLegController(SwingLegController):
 
 		return swing_foot_reference_p
 
-	def update(self, state, step_phase, step_locs, p_step_locs, active_feet, KP = 500):
-		reference_positions = self.trajectory(state, step_phase, step_locs, p_step_locs, active_feet)
+	def update(self, state, step_phase, step_locs, p_step_locs, active_feet, woof_config, swing_config):
+		reference_positions = self.trajectory(state, step_phase, step_locs, p_step_locs, active_feet, swing_config)
 
 		feet_world_NED = WooferDynamics.FootLocationsWorld(state)
 
 		errors = reference_positions - feet_world_NED
-		foot_forces = KP * errors
+		foot_forces = swing_config.KP * errors
 
 		leg_torques = np.zeros(12)
 		for i in range(4):

@@ -27,7 +27,7 @@ def AccelerationMatrix(q_feet):
 	return A
 
 
-def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, gamma = 100.0, verbose=0):
+def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, gamma = 100, verbose=0):
 	"""
 	Use OSQP to solve for feet forces. 
 
@@ -149,7 +149,7 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 
 
 		acc_cost 	= np.matmul(res.x,	np.matmul(P0,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
-		force_cost 	= np.dot(res.x, 	np.dot(R, 	res.x))
+		force_cost 	= np.dot(res.x, 	np.dot(R, 		res.x))
 		print('Accuracy cost: %s \t Force cost: %s'%(acc_cost, force_cost))
 		print('\n')
 

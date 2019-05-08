@@ -22,7 +22,7 @@ woofer = WooferRobot.MakeWoofer()
 """
 Run the simulation
 """
-timesteps = 1000
+timesteps = 2000
 
 # Latency options
 latency = 2 # ms of latency between torque computation and application at the joint
