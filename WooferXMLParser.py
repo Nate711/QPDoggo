@@ -1,20 +1,24 @@
 import os
 import shutil
 from os.path import expanduser
-from WooferConfig import WOOFER_CONFIG
+from WooferConfig import WOOFER_CONFIG, ENVIRONMENT_CONFIG
 
 def Parse():
 	###### ROBOT PARAMETERS #####
 
 	## Solver params ##
-	woofer_timestep = 0.001					# timestep
-	woofer_solref 	= 0.010					# time constant for contacts
-	woofer_armature = 0.0024				# armature for joints [kgm2]
-	woofer_solimp = "0.9 0.95 0.001"		# contact parameter
+	woofer_timestep 		= ENVIRONMENT_CONFIG.DT	# timestep
+	woofer_joint_solref 	= "0.001 1"			# time constant and damping ratio for joints
+	woofer_joint_solimp 	= "0.9 0.95 0.001"	# joint constraint parameters
+
+	woofer_geom_solref 		= "0.005 2"			# time constant and damping ratio for geom contacts
+	woofer_geom_solimp 		= "0.9 0.95 0.001"	# geometry contact parameters
+
+	woofer_armature 		= 0.0024			# armature for joints [kgm2]
 
 	## Geometry params ##
-	woofer_leg_radius = 0.02 				# radius of leg capsule
-	woofer_friction = 1.0					# friction between legs and ground
+	woofer_leg_radius = WOOFER_CONFIG.FOOT_RADIUS # radius of leg capsule
+	woofer_friction = ENVIRONMENT_CONFIG.MU	# friction between legs and ground
 	woofer_half_size = "%s %s %s"%(WOOFER_CONFIG.L/2, WOOFER_CONFIG.W/2, WOOFER_CONFIG.T/2) # half-size of body box
 
 	woofer_leg_geom = "0 0 0 0 0 %s"%(-WOOFER_CONFIG.LEG_L) # to-from leg geometry
@@ -32,9 +36,9 @@ def Parse():
 
 	###### FILE PATHS  #####
 
-	dir_path = os.path.dirname(os.path.realpath(__file__))
-	in_file = dir_path+"/woofer.xml"
-	out_file = dir_path + "/woofer_out.xml"
+	dir_path 	= os.path.dirname(os.path.realpath(__file__))
+	in_file 	= dir_path+"/woofer.xml"
+	out_file 	= dir_path + "/woofer_out.xml"
 
 	### Parse the xml ###
 
@@ -50,10 +54,12 @@ def Parse():
 
 	# Solver specs
 	filedata = filedata.replace('woofer_timestep', str(woofer_timestep))
-	filedata = filedata.replace('woofer_solref', str(woofer_solref))
+	filedata = filedata.replace('woofer_joint_solref', str(woofer_joint_solref))
+	filedata = filedata.replace('woofer_geom_solref', str(woofer_geom_solref))
 	filedata = filedata.replace('woofer_friction', str(woofer_friction))
 	filedata = filedata.replace('woofer_armature', str(woofer_armature))
-	filedata = filedata.replace('woofer_solimp', str(woofer_solimp))
+	filedata = filedata.replace('woofer_joint_solimp', str(woofer_joint_solimp))
+	filedata = filedata.replace('woofer_geom_solimp', str(woofer_geom_solimp))
 
 	# Joint specs
 	filedata = filedata.replace('woofer_ext_force_range', str(woofer_ext_force_range))

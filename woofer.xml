@@ -7,8 +7,8 @@
   <compiler angle="radian" coordinate="local" inertiafromgeom="true" settotalmass="woofer_mass"/>
 
   <default>
-    <joint armature="woofer_armature" solimplimit="woofer_solimp" solreflimit="woofer_solref 1" stiffness="0"/>
-    <geom conaffinity="0" condim="3" contype="1" friction="woofer_friction .1 .1" rgba="0.8 0.6 .4 1" solimp="woofer_solimp" solref="woofer_solref 1"/>
+    <joint armature="woofer_armature" solimplimit="woofer_joint_solimp" solreflimit="woofer_joint_solref" stiffness="0"/>
+    <geom conaffinity="0" condim="3" contype="1" friction="woofer_friction .1 .1" rgba="0.8 0.6 .4 1" solimp="woofer_geom_solimp" solref="woofer_geom_solref"/>
     <motor ctrllimited="true" forcelimited="true"/>
   </default>
 

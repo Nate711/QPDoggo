@@ -2,6 +2,11 @@ import numpy as np
 import rotations
 from WooferConfig import WOOFER_CONFIG
 
+def FootSelector(binary_foot_selector):
+	return binary_foot_selector[[0,0,0,1,1,1,2,2,2,3,3,3]]
+def CoordinateExpander(binary_coordinate_selector):
+	return binary_coordinate_selector[[0,1,2,0,1,2,0,1,2,0,1,2]]
+
 def LegForwardKinematics(quat_orientation, joints):
 	"""
 	Gives the North-East-Down (NED)-style coordinates of the four feet. NED coordinates are coordinates in a noninertial reference frame

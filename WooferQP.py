@@ -27,7 +27,7 @@ def AccelerationMatrix(q_feet):
 	return A
 
 
-def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.1, beta = 0, gamma = 100, verbose=0):
+def SolveFeetForces(q_feet, feet_contact, reference_wrench, f_prev, mu = 1.0, alpha = 1e-3, beta = 0.1, gamma = 100, verbose=0):
 	"""
 	Use OSQP to solve for feet forces. 
 
@@ -59,12 +59,17 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 							P = 2A'KA
 							q = -2A'Kb
 
-	We also want to minimize the norm of x and so the final objective is
-							Minimize x'(A'KA + R)x -A'Kbx
-							P = 2(A'KA + R)
-							q = -2A'Kb
+	We also want to minimize the norm of x to minimize foot forces, and minimize the 
+	difference between new and old foot forces so the final objective is
 
-	in the code A'KA is called P0, and R is R
+							Minimize x'(A'KA + R + beta*I)x - 2(A'Kb + beta*x0)
+							P = 2(A'KA + R + betaI)
+							q = - 2A'Kb - beta*x0
+
+	The derivation of the smoothness term is
+	loss = beta*(x1-x0)'(x1-x0) = beta*x1'x1 - beta*2*x0'x1 + beta*x0'x0
+
+	in the code A'KA is called AKA, R is alpha*I, and x0 is called f_prev (previous force)
 	"""
 	
 	## Params ##
@@ -75,23 +80,21 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 	A = AccelerationMatrix(q_feet)
 	b = reference_wrench
 
-	# Construct normalizer matrix R
-	alpha_revolute	= alpha
-	alpha_prismatic = alpha * 0.10
-	R = np.diag([alpha_revolute, alpha_revolute, alpha_prismatic]*4)
+	# Construct normalizer matrix R which minimizes total foot forces
+	R = np.eye(12)*alpha
 
 	# Construct quadratic norm matrix K
 	K = np.diag([1,1,1,gamma,gamma,gamma])
 
-	# Construct P0
-	P0 = np.matmul(A.T,np.matmul(K, A))
+	# Construct AKA
+	AKA = np.matmul(A.T,np.matmul(K, A))
 
 	# Construct the final P matrix
-	P_dense = 2*(P0 + R)
+	P_dense = 2*(AKA + R + beta*np.eye(12))
 	P = sparse.csc_matrix(P_dense)
 
 	# Construct the linear term q
-	q = -2*np.matmul(A.T,np.matmul(K, b))
+	q = -2*np.matmul(A.T,np.matmul(K, b)) - beta*f_prev
 
 	# Set up the inequality constraints with matrix X
 	mu_pyramid = mu/(2**0.5)
@@ -148,7 +151,7 @@ def SolveFeetForces(q_feet, feet_contact, reference_wrench, mu = 1.0, alpha = 0.
 		print(np.dot(A,res.x))
 
 
-		acc_cost 	= np.matmul(res.x,	np.matmul(P0,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
+		acc_cost 	= np.matmul(res.x,	np.matmul(AKA,	res.x)) + np.dot(q,res.x) + np.dot(b,b)
 		force_cost 	= np.dot(res.x, 	np.dot(R, 		res.x))
 		print('Accuracy cost: %s \t Force cost: %s'%(acc_cost, force_cost))
 		print('\n')

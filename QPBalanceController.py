@@ -13,6 +13,7 @@ class QPBalanceController:
 					active_feet, 
 					o_ref, 
 					rpy_ref,
+					f_prev, 
 					woof_config,
 					qp_config,
 					verbose = 0):
@@ -62,8 +63,10 @@ class QPBalanceController:
 		feet_forces = SolveFeetForces(	feet_locations, 
 										contacts, 
 										ref_wrench, 
+										f_prev, 
 										mu = qp_config.MU, 
 										alpha = qp_config.ALPHA, 
+										beta = qp_config.BETA,
 										gamma = qp_config.GAMMA, 
 										verbose = verbose)
 

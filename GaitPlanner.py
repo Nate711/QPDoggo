@@ -60,10 +60,12 @@ class StepPlanner(GaitPlanner):
 		# stride starts at phase = 0 and ends at phase = 1
 		phase = t/gait_config.D
 
-		foot_locs = np.array([ 	 woof_config.LEG_FB, -woof_config.LEG_LR, 0,
-								 woof_config.LEG_FB,  woof_config.LEG_LR, 0,
-								-woof_config.LEG_FB, -woof_config.LEG_LR, 0,
-								-woof_config.LEG_FB,  woof_config.LEG_LR, 0])
+		foot_height = woof_config.FOOT_RADIUS
+
+		foot_locs = np.array([ 	 woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+								 woof_config.LEG_FB,  woof_config.LEG_LR, foot_height,
+								-woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+								-woof_config.LEG_FB,  woof_config.LEG_LR, foot_height])
 		p_foot_locs = foot_locs
 
 		active_feet = np.array([1,1,1,1])
@@ -72,39 +74,39 @@ class StepPlanner(GaitPlanner):
 
 		if phase >= 0 and phase < 0.5:
 			# Move FR and BL forward
-			foot_locs = np.array([ 	 woof_config.LEG_FB + gait_config.STEP_LENGTH,	-woof_config.LEG_LR, 0,
-									 woof_config.LEG_FB, 				 	 		 woof_config.LEG_LR, 0,
-								 	-woof_config.LEG_FB, 							-woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB + gait_config.STEP_LENGTH,   woof_config.LEG_LR, 0])
+			foot_locs = np.array([ 	 woof_config.LEG_FB + gait_config.STEP_LENGTH,	-woof_config.LEG_LR, foot_height,
+									 woof_config.LEG_FB, 				 	 		 woof_config.LEG_LR, foot_height,
+								 	-woof_config.LEG_FB, 							-woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB + gait_config.STEP_LENGTH,   woof_config.LEG_LR, foot_height])
 			
-			p_foot_locs = np.array([ woof_config.LEG_FB, -woof_config.LEG_LR, 0,
-									 woof_config.LEG_FB,  woof_config.LEG_LR, 0,
-								 	-woof_config.LEG_FB, -woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB,  woof_config.LEG_LR, 0])
+			p_foot_locs = np.array([ woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+									 woof_config.LEG_FB,  woof_config.LEG_LR, foot_height,
+								 	-woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB,  woof_config.LEG_LR, foot_height])
 			active_feet = np.array([0,1,1,0])
 			
 			step_phase = phase * 2.0
 			
 		elif phase >= 0.5 and phase < 1.0:
 			# Move FL and BR forward
-			foot_locs = np.array([	 woof_config.LEG_FB + gait_config.STEP_LENGTH,	-woof_config.LEG_LR, 0,
-									 woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, 0,
-								 	-woof_config.LEG_FB + gait_config.STEP_LENGTH, 	-woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, 0])
-			p_foot_locs = np.array([ woof_config.LEG_FB + gait_config.STEP_LENGTH, 	-woof_config.LEG_LR, 0,
-									 woof_config.LEG_FB, 				 	 		 woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB, 							-woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, 0])
+			foot_locs = np.array([	 woof_config.LEG_FB + gait_config.STEP_LENGTH,	-woof_config.LEG_LR, foot_height,
+									 woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, foot_height,
+								 	-woof_config.LEG_FB + gait_config.STEP_LENGTH, 	-woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, foot_height])
+			p_foot_locs = np.array([ woof_config.LEG_FB + gait_config.STEP_LENGTH, 	-woof_config.LEG_LR, foot_height,
+									 woof_config.LEG_FB, 				 	 		 woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB, 							-woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB + gait_config.STEP_LENGTH,	 woof_config.LEG_LR, foot_height])
 			active_feet = np.array([1,0,0,1])
 
 			step_phase = (phase - 0.5) * 2.0
 
 		elif phase >= 1.0:
 			# All feet are forward
-			foot_locs = np.array([ 	 woof_config.LEG_FB + gait_config.STEP_LENGTH, -woof_config.LEG_LR, 0,
-									 woof_config.LEG_FB + gait_config.STEP_LENGTH,  woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB + gait_config.STEP_LENGTH, -woof_config.LEG_LR, 0,
-									-woof_config.LEG_FB + gait_config.STEP_LENGTH,  woof_config.LEG_LR, 0])
+			foot_locs = np.array([ 	 woof_config.LEG_FB + gait_config.STEP_LENGTH, -woof_config.LEG_LR, foot_height,
+									 woof_config.LEG_FB + gait_config.STEP_LENGTH,  woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB + gait_config.STEP_LENGTH, -woof_config.LEG_LR, foot_height,
+									-woof_config.LEG_FB + gait_config.STEP_LENGTH,  woof_config.LEG_LR, foot_height])
 			p_foot_locs = foot_locs
 
 			active_feet = np.array([1,1,1,1])

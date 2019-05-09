@@ -2,6 +2,7 @@ from mujoco_py import load_model_from_path, MjSim, MjViewer, functions
 import WooferXMLParser
 import WooferRobot
 import numpy as np
+from WooferConfig import WOOFER_CONFIG, ENVIRONMENT_CONFIG
 
 
 """
@@ -22,13 +23,13 @@ woofer = WooferRobot.MakeWoofer()
 """
 Run the simulation
 """
-timesteps = 2000
+timesteps = ENVIRONMENT_CONFIG.SIM_STEPS
 
 # Latency options
-latency = 2 # ms of latency between torque computation and application at the joint
-control_rate = 1 # ms between updates (not in Hz)
-tau_history = np.zeros((12,timesteps))
-tau_noise = 0.5 # Nm
+latency 		= WOOFER_CONFIG.LATENCY 		# ms of latency between torque computation and application at the joint
+control_rate 	= WOOFER_CONFIG.UPDATE_PERIOD	# ms between updates (not in Hz)
+tau_history 	= np.zeros((12,timesteps))		
+tau_noise 		= WOOFER_CONFIG.JOINT_NOISE 	# Nm
 
 for i in range(timesteps):
 	# Step the woofer controller and estimators forward
@@ -53,3 +54,4 @@ for i in range(timesteps):
 Save data to file
 """
 woofer.save_logs()
+print("Done Saving Logs")

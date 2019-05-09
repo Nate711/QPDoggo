@@ -45,19 +45,25 @@ class WooferRobot():
 
 		init_data_size = 10
 		self.data = {}
-		self.data['torque_history'] 			= np.empty((12,init_data_size))
-		self.data['force_history']				= np.empty((12,init_data_size))
-		self.data['ref_wrench_history'] 		= np.empty((6,init_data_size))
-		self.data['contacts_history'] 			= np.empty((4,init_data_size))
-		self.data['active_feet_history'] 		= np.empty((4,init_data_size)) 
-		self.data['swing_force_history']		= np.empty((12,init_data_size))
-		self.data['swing_trajectory']			= np.empty((12,init_data_size))
-		self.data['phase_history']				= np.empty((1,init_data_size))
-		self.data['step_phase_history']			= np.empty((1,init_data_size))
+		self.data['torque_history'] 			= np.zeros((12,init_data_size))
+		self.data['force_history']				= np.zeros((12,init_data_size))
+		self.data['ref_wrench_history'] 		= np.zeros((6,init_data_size))
+		self.data['contacts_history'] 			= np.zeros((4,init_data_size))
+		self.data['active_feet_history'] 		= np.zeros((4,init_data_size)) 
+		self.data['swing_torque_history']		= np.zeros((12,init_data_size))
+		self.data['swing_force_history']		= np.zeros((12,init_data_size))
+
+		self.data['swing_trajectory']			= np.zeros((12,init_data_size))
+		self.data['foot_positions']				= np.zeros((12,init_data_size))
+		self.data['phase_history']				= np.zeros((1,init_data_size))
+		self.data['step_phase_history']			= np.zeros((1,init_data_size))
 
 		self.dt = dt
 		self.t = 0
 		self.i = 0
+
+		self.foot_forces = np.array([0,0,WOOFER_CONFIG.MASS*9.81/4]*4)
+
 		self.phase = 0
 		self.step_phase = 0 # Increases from 0 to 1 and back to 0 every step
 		self.step_locations = np.zeros(12)
@@ -65,6 +71,7 @@ class WooferRobot():
 
 		self.swing_torques = np.zeros(12)
 		self.swing_trajectory = np.zeros(12)
+		self.foot_positions = np.zeros(12)
 
 	def step(self, sim):
 		"""
@@ -95,13 +102,16 @@ class WooferRobot():
 
 		################################### Swing leg control ###################################
 		# TODO. Zero for now, but in the future the swing controller will provide these torques
-		self.swing_torques, self.swing_trajectory = self.swing_controller.update(	self.state, 
-																					self.step_phase, 
-																					self.step_locations,
-																					self.p_step_locations, 
-																					self.active_feet,
-																					WOOFER_CONFIG,
-																					SWING_CONTROLLER_CONFIG)
+		self.swing_torques, \
+		self.swing_forces,\
+		self.swing_trajectory, \
+		self.foot_positions = self.swing_controller.update(	self.state, 
+															self.step_phase, 
+															self.step_locations,
+															self.p_step_locations, 
+															self.active_feet,
+															WOOFER_CONFIG,
+															SWING_CONTROLLER_CONFIG)
 
 		################################### QP force control ###################################
 		# Rearrange the state for the qp solver
@@ -117,9 +127,10 @@ class WooferRobot():
 		# Calculate foot forces using the QP solver
 		(qp_torques, self.foot_forces, self.ref_wrench) = self.qp_controller.Update(qp_state, 
 																					self.feet_locations, 
-																					self.active_feet, 
+																					self.active_feet, 																
 																					p_ref, 
 																					rpy_ref,
+																					self.foot_forces,
 																					WOOFER_CONFIG,
 																					QP_CONFIG)
 		# Expanded version of active feet
@@ -148,7 +159,7 @@ class WooferRobot():
 		data_len = self.data['torque_history'].shape[1]
 		if self.i > data_len - 1:
 			for key in self.data.keys():
-				self.data[key] = np.append(self.data[key], np.empty((np.shape(self.data[key])[0],1000)),axis=1)
+				self.data[key] = np.append(self.data[key], np.zeros((np.shape(self.data[key])[0],1000)),axis=1)
 			
 
 		self.max_forces.Update(self.foot_forces)
@@ -158,8 +169,10 @@ class WooferRobot():
 		self.data['ref_wrench_history'][:,self.i] 	= self.ref_wrench
 		self.data['contacts_history'][:,self.i] 	= self.contacts
 		self.data['active_feet_history'][:,self.i] 	= self.active_feet
-		self.data['swing_force_history'][:,self.i]	= self.swing_torques
+		self.data['swing_torque_history'][:,self.i]	= self.swing_torques
+		self.data['swing_force_history'][:,self.i] 	= self.swing_forces
 		self.data['swing_trajectory'][:,self.i]		= self.swing_trajectory
+		self.data['foot_positions'][:,self.i]		= self.foot_positions
 		self.data['phase_history'][:,self.i]		= self.phase
 		self.data['step_phase_history'][:,self.i]	= self.step_phase
 
@@ -183,8 +196,9 @@ class WooferRobot():
 		"""
 		Save the log data to file
 		"""
-		with open('woofer_logs.pickle', 'wb') as handle:
-			pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		np.savez('woofer_numpy_log',**self.data)
+		# with open('woofer_logs.pickle', 'wb') as handle:
+		# 	pickle.dump(self.data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 def MakeWoofer(dt = 0.001):
 	"""

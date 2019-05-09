@@ -36,7 +36,7 @@ class PDSwingLegController(SwingLegController):
 		foot_heights[[2,5,8,11]] = swing_config.STEP_HEIGHT * (sin(step_phase * pi))**2
 
 		# combine ground plane interp and foot heights
-		swing_foot_reference_p = ground_plane_foot_reference + foot_heights
+		swing_foot_reference_p = WooferDynamics.FootSelector(1-active_feet)*(ground_plane_foot_reference + foot_heights)
 
 		# print(feet_world_NED)
 		# print(swing_foot_reference_p)
@@ -47,10 +47,10 @@ class PDSwingLegController(SwingLegController):
 	def update(self, state, step_phase, step_locs, p_step_locs, active_feet, woof_config, swing_config):
 		reference_positions = self.trajectory(state, step_phase, step_locs, p_step_locs, active_feet, swing_config)
 
-		feet_world_NED = WooferDynamics.FootLocationsWorld(state)
+		actual_positions = WooferDynamics.FootLocationsWorld(state)
 
-		errors = reference_positions - feet_world_NED
-		foot_forces = swing_config.KP * errors
+		errors = reference_positions - actual_positions
+		foot_forces = WooferDynamics.CoordinateExpander(swing_config.KP) * errors * WooferDynamics.FootSelector(1-active_feet)
 
 		leg_torques = np.zeros(12)
 		for i in range(4):
@@ -61,7 +61,7 @@ class PDSwingLegController(SwingLegController):
 
 		# print(leg_torques, reference_positions)
 		# print(" ")
-		return leg_torques, reference_positions
+		return leg_torques, foot_forces, reference_positions, actual_positions
 
 
 
