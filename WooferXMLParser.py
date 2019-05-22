@@ -34,6 +34,11 @@ def Parse():
 	woofer_joint_damping = 0.2	# damping on ab/ad and f/b angular joints [Nm/rad/s]
 
 
+	## Sensor Noise Parameters ##
+	woofer_accel_noise = 0
+	woofer_encoder_noise = 0
+	woofer_gyro_noise = 0
+
 	###### FILE PATHS  #####
 
 	dir_path 	= os.path.dirname(os.path.realpath(__file__))
@@ -77,6 +82,11 @@ def Parse():
 	filedata = filedata.replace('woofer_leg_lr', str(WOOFER_CONFIG.LEG_LR))
 	filedata = filedata.replace("woofer_leg_geom", str(woofer_leg_geom))
 	filedata = filedata.replace("woofer_start_position", str(woofer_start_position))
+
+	# Sensor noise
+	filedata = filedata.replace("woofer_accel_noise", str(woofer_accel_noise))
+	filedata = filedata.replace("woofer_gyro_noise", str(woofer_gyro_noise))
+	filedata = filedata.replace("woofer_encoder_noise", str(woofer_encoder_noise))
 
 	# Write the xml file
 	with open(out_file, 'w') as file:
