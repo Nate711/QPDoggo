@@ -7,12 +7,12 @@ import rotations
 from MathUtils 				import CrossProductMatrix, RunningMax
 
 # Provides kinematic functions among others
-import WooferDynamics 		
+import WooferDynamics
 
 from JointSpaceController 	import JointSpaceController, TrotPDController
 from BasicController 		import PropController
 from QPBalanceController 	import QPBalanceController
-from StateEstimator 		import MuJoCoStateEstimator
+from StateEstimator 		import MuJoCoStateEstimator, UKFStateEstimator
 from ContactEstimator 		import MuJoCoContactEstimator
 from GaitPlanner 			import StandingPlanner, StepPlanner
 from SwingLegController		import PDSwingLegController, ZeroSwingLegController
@@ -21,10 +21,10 @@ from WooferConfig import WOOFER_CONFIG, QP_CONFIG, SWING_CONTROLLER_CONFIG, GAIT
 
 class WooferRobot():
 	"""
-	This class represents the onboard Woofer software. 
+	This class represents the onboard Woofer software.
 
 	The primary input is the mujoco simulation data and the
-	primary output is a set joint torques. 
+	primary output is a set joint torques.
 	"""
 	def __init__(self, state_estimator, contact_estimator, qp_controller, gait_planner, swing_controller, dt):
 		"""
@@ -49,7 +49,7 @@ class WooferRobot():
 		self.data['force_history']				= np.zeros((12,init_data_size))
 		self.data['ref_wrench_history'] 		= np.zeros((6,init_data_size))
 		self.data['contacts_history'] 			= np.zeros((4,init_data_size))
-		self.data['active_feet_history'] 		= np.zeros((4,init_data_size)) 
+		self.data['active_feet_history'] 		= np.zeros((4,init_data_size))
 		self.data['swing_torque_history']		= np.zeros((12,init_data_size))
 		self.data['swing_force_history']		= np.zeros((12,init_data_size))
 
@@ -57,6 +57,14 @@ class WooferRobot():
 		self.data['foot_positions']				= np.zeros((12,init_data_size))
 		self.data['phase_history']				= np.zeros((1,init_data_size))
 		self.data['step_phase_history']			= np.zeros((1,init_data_size))
+
+		# self.data['accelerometer_hist']			= np.zeros((3,init_data_size))
+		# self.data['gyro_hist']					= np.zeros((3,init_data_size))
+		# self.data['joint_sensor_hist']			= np.zeros((12,init_data_size))
+		#
+		# self.accelerometer_sensor 				= None
+		# self.gyro_sensor 						= None
+		# self.joint_sensor						= None
 
 		self.dt = dt
 		self.t = 0
@@ -76,25 +84,32 @@ class WooferRobot():
 	def step(self, sim):
 		"""
 		Get sensor data and update state estimate and contact estimate. Then calculate joint torques for locomotion.
-		
+
 		Details:
 		Gait controller:
 		Looks at phase variable to determine foot placements and COM trajectory
-		
-		QP: 
+
+		QP:
 		Generates joint torques to achieve given desired CoM trajectory given stance feet
 
 		Swing controller:
 		Swing controller needs reference foot landing positions and phase
 		"""
-		################################### State & contact estimation ###################################
-		self.state 		= self.state_estimator.update(sim)
+		################################### Sensor update ###################################
+		# self.accelerometer_sensor = WooferDynamics.accel_sensor(sim)
+		# self.gyro_sensor = WooferDynamics.gyro_sensor(sim)
+		# self.joint_sensor = WooferDynamics.joint_sensor(sim)
+
+		################################### Contact estimation ###################################
 		self.contacts 	= self.contact_estimator.update(sim)
+
+		################################### State estimation ###################################
+		self.state 		= self.state_estimator.update(sim, self.foot_forces)
 
 		################################### Gait planning ###################################
 		(self.step_locations, self.p_step_locations, \
-		 p_ref, rpy_ref, self.active_feet, self.phase, self.step_phase) = self.gait_planner.update(	self.state, 
-																									self.contacts, 
+		 p_ref, rpy_ref, self.active_feet, self.phase, self.step_phase) = self.gait_planner.update(	self.state,
+																									self.contacts,
 																									self.t,
 																									WOOFER_CONFIG,
 																									GAIT_PLANNER_CONFIG)
@@ -105,10 +120,10 @@ class WooferRobot():
 		self.swing_torques, \
 		self.swing_forces,\
 		self.swing_trajectory, \
-		self.foot_positions = self.swing_controller.update(	self.state, 
-															self.step_phase, 
+		self.foot_positions = self.swing_controller.update(	self.state,
+															self.step_phase,
 															self.step_locations,
-															self.p_step_locations, 
+															self.p_step_locations,
 															self.active_feet,
 															WOOFER_CONFIG,
 															SWING_CONTROLLER_CONFIG)
@@ -125,16 +140,16 @@ class WooferRobot():
 		self.feet_locations = WooferDynamics.LegForwardKinematics(self.state['q'], self.state['j'])
 
 		# Calculate foot forces using the QP solver
-		(qp_torques, self.foot_forces, self.ref_wrench) = self.qp_controller.Update(qp_state, 
-																					self.feet_locations, 
-																					self.active_feet, 																
-																					p_ref, 
+		(qp_torques, self.foot_forces, self.ref_wrench) = self.qp_controller.Update(qp_state,
+																					self.feet_locations,
+																					self.active_feet,
+																					p_ref,
 																					rpy_ref,
 																					self.foot_forces,
 																					WOOFER_CONFIG,
 																					QP_CONFIG)
 		# Expanded version of active feet
-		active_feet_12 = self.active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]] 
+		active_feet_12 = self.active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]]
 
 		# Mix the QP-generated torques and PD-generated torques to produce the final joint torques sent to the robot
 		self.torques = active_feet_12 * qp_torques + (1 - active_feet_12) * self.swing_torques
@@ -155,12 +170,12 @@ class WooferRobot():
 	def log_data(self):
 		"""
 		Append data to logs
-		""" 
+		"""
 		data_len = self.data['torque_history'].shape[1]
 		if self.i > data_len - 1:
 			for key in self.data.keys():
 				self.data[key] = np.append(self.data[key], np.zeros((np.shape(self.data[key])[0],1000)),axis=1)
-			
+
 
 		self.max_forces.Update(self.foot_forces)
 		self.max_torques.Update(self.torques)
@@ -175,6 +190,9 @@ class WooferRobot():
 		self.data['foot_positions'][:,self.i]		= self.foot_positions
 		self.data['phase_history'][:,self.i]		= self.phase
 		self.data['step_phase_history'][:,self.i]	= self.step_phase
+		# self.data['accelerometer_hist'][:,self.i]	= self.accelerometer_sensor
+		# self.data['gyro_hist'][:,self.i]			= self.gyro_sensor
+		# self.data['joint_sensor_hist'][:,self.i]	= self.joint_sensor
 
 	def print_data(self):
 		"""
@@ -190,6 +208,9 @@ class WooferRobot():
 		print("contacts: %s"		%self.contacts)
 		print("QP feet forces: %s"	%self.foot_forces)
 		print("Joint torques: %s"	%self.torques)
+		# print("Accelerometer: %s"	%self.accelerometer_sensor)
+		# print("Gyro: %s"			%self.gyro_sensor)
+		# print("Joint Sensor: %s"	%self.joint_sensor)
 		print('\n')
 
 	def save_logs(self):
@@ -204,20 +225,15 @@ def MakeWoofer(dt = 0.001):
 	"""
 	Create robot object
 	"""
-	mujoco_state_est 	= MuJoCoStateEstimator()
 	mujoco_contact_est 	= MuJoCoContactEstimator()
+	mujoco_state_est 	= MuJoCoStateEstimator()
+	# ukf_state_est 		= UKFStateEstimator(mujoco_contact_est, dt)
 	qp_controller	 	= QPBalanceController()
 	# gait_planner 		= StandingPlanner()
 	gait_planner 		= StepPlanner()
 	swing_controller	= PDSwingLegController()
 
 	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
+	# woofer = WooferRobot(ukf_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
 
 	return woofer
-
-
-
-
-
-
-

@@ -10,12 +10,12 @@ def CoordinateExpander(binary_coordinate_selector):
 def LegForwardKinematics(quat_orientation, joints):
 	"""
 	Gives the North-East-Down (NED)-style coordinates of the four feet. NED coordinates are coordinates in a noninertial reference frame
-	attached to the CoM of the robot. The axes of the NED frame are parallel to the x, y, and z axes in this simulation. 
+	attached to the CoM of the robot. The axes of the NED frame are parallel to the x, y, and z axes in this simulation.
 
 	quat_orientation:	unit quaternion for body orientation
 	joints: 			joint angles in qpos ordering
 	"""
-	
+
 	def LegFK(abad, for_back, radial, handedness):
 		hands = {"left":1, "right":-1}
 		offset = hands[handedness]*(WOOFER_CONFIG.ABDUCTION_OFFSET)
@@ -23,7 +23,7 @@ def LegForwardKinematics(quat_orientation, joints):
 		R = rotations.euler2mat([abad, for_back, 0])	# rotation matrix for abduction, then forward back
 		foot = np.dot(R,leg_unrotated)
 		return foot
-	
+
 	# Get foot locations in local body coordinates
 	# Right-handedness of frame means y is positive in the LEFT direction
 	foot_fr = LegFK(joints[0], joints[1], joints[2], "right") + np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -61,12 +61,12 @@ def LegJacobian(beta, theta, r, abaduction_offset = 0):
 	k = np.array([0,0,1])
 
 	# leg pointing straight down
-	unrotated = np.array([0,abaduction_offset,-WOOFER_CONFIG.LEG_L + r]) 	
+	unrotated = np.array([0,abaduction_offset,-WOOFER_CONFIG.LEG_L + r])
 	# vector from leg hub to foot in body coordinates
-	p = np.dot(rotations.euler2mat([beta, theta, 0]), unrotated) 
+	p = np.dot(rotations.euler2mat([beta, theta, 0]), unrotated)
 
 	# directions of positive joint movement
-	theta_axis 	= np.dot(rotations.euler2mat([beta, 0, 0]), j) 
+	theta_axis 	= np.dot(rotations.euler2mat([beta, 0, 0]), j)
 	beta_axis 	= i
 	radial_axis = k
 
@@ -102,7 +102,7 @@ def FeetContacts(_sim):
 
 		# print('geom1', contact.geom1, c1)
 		# print('geom2', contact.geom2, c2)
-		
+
 		if c1 == 'floor':
 			if c2 == 'fr':
 				contacts[0] = 1
@@ -126,3 +126,9 @@ def joints(sim):
 	return sim.data.qpos[7:]
 def joint_vel(sim):
 	return sim.data.qvel[6:]
+def accel_sensor(sim):
+	return sim.data.sensordata[0:3]
+def gyro_sensor(sim):
+	return sim.data.sensordata[3:6]
+def joint_sensor(sim):
+	return sim.data.sensordata[6:18]
