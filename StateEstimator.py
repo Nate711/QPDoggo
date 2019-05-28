@@ -42,18 +42,20 @@ class UKFStateEstimator(StateEstimator):
 	"""
 	UKF based state estimation with quaternions for orientation
 	"""
-	def __init__(self, contact_estimator, dt):
-		self.contact_estimator = contact_estimator
+	def __init__(self, dt):
+		# self.contact_estimator = contact_estimator
 		self.x = np.zeros((19))
 		self.x[3:7] = np.array([1, 0, 0, 0])
-		self.P = 0.1*np.eye(18)
-		self.alpha = 0.1
+		self.P = 0.1 * np.eye(18)
+		self.alpha = 0.15
 		self.L = np.size(self.x)
 		self.J = WOOFER_CONFIG.INERTIA
 		self.dt = dt
+		self.J_inv = np.linalg.inv(self.J)
+		# print("x0: %s", self.x)
 
-		self.Q = np.eye(self.L-1)
-		self.R = np.eye(6)
+		self.Q = 0.1 * np.eye(self.L-1)
+		self.R = 0.001 * np.eye(6)
 
 		# leg offsets
 		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -61,20 +63,16 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, sim, u):
-		accelerometer_sensor = WooferDynamics.accel_sensor(sim)
-		gyro_sensor = WooferDynamics.gyro_sensor(sim)
-		joint_sensor = WooferDynamics.joint_sensor(sim)
-
-		# z_meas = block([accelerometer_sensor, gyro_sensor, joint_sensor])
-		z_meas = np.block([accelerometer_sensor, gyro_sensor])
+	def update(self, z_meas, u):#sim, u):
+		# z_meas = self.getSensorMeasurements(sim)
+		print("Condition number: ", np.linalg.cond(self.P))
+		# print("Sensor measurement: ", z_meas)
+		# print("Control: %s", u)
 
 		X_x = self.calcSigmas()
 
 		# number of sigma points generated
 		n = X_x.shape[1]
-
-		# print("Num sigma points: %d" %n)
 
 		# weighting vectors for mean/covariance calculation
 		w_m = 1/(n)*np.ones((n))
@@ -89,14 +87,15 @@ class UKFStateEstimator(StateEstimator):
 			k3 = self.dt*self.dynamics(X_x[:,k]+k2/2, u)
 			k4 = self.dt*self.dynamics(X_x[:,k]+k3, u)
 			x_p[:,k] = X_x[:,k] + (k1+2*k2+2*k3+k4)/6
-			x_p[:,k] = quaternion.normalize(x_p[:,k])
-
+			x_p[3:7,k] = quaternion.normalize(x_p[3:7,k])
 
 		x_bar = np.zeros((self.L))
 
 		x_bar[0:3] = x_p[0:3,:] @ w_m
 		x_bar[3:7] = self.quaternionAverage(x_p[3:7,:], w_m)
 		x_bar[7:(self.L)] = x_p[7:(self.L),:] @ w_m
+
+		# print("Average propogated state: %s",x_bar)
 
 		z_p = np.zeros((z_meas.size, n))
 
@@ -105,6 +104,9 @@ class UKFStateEstimator(StateEstimator):
 			z_p[:,k] = self.meas(x_p[:,k], u)
 
 		z_bar = z_p @ w_m
+
+		# print("Expected meas: %s",z_bar)
+		# print("Actual meas: %s", z_meas)
 
 		dX = np.zeros((self.L-1, n))
 
@@ -132,7 +134,7 @@ class UKFStateEstimator(StateEstimator):
 		# Kalman Gain
 		K = Pxz @ np.linalg.inv(S)
 
-		# K = np.linalg.lstsq(Pxz, S)
+		# print("K: %s", K)
 
 		x_update = K @ nu
 
@@ -144,12 +146,23 @@ class UKFStateEstimator(StateEstimator):
 		self.P = Pxx - K @ S @ K.T
 
 		# cheating here for now:
-		joints 		= WooferDynamics.joints(sim)
-		joint_vel 	= WooferDynamics.joint_vel(sim)
+		joints 		= np.zeros(3)# WooferDynamics.joints(sim)
+		joint_vel 	= np.zeros(3)# WooferDynamics.joint_vel(sim)
 
-		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":self.x[10:13], "j":joints, "j_d":joint_vel}
+		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":self.x[10:13], \
+						"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
 
 		return state_est
+
+	def getSensorMeasurements(self, sim):
+		accelerometer_sensor = WooferDynamics.accel_sensor(sim)
+		gyro_sensor = WooferDynamics.gyro_sensor(sim)
+		joint_sensor = WooferDynamics.joint_sensor(sim)
+
+		# z_meas = block([accelerometer_sensor, gyro_sensor, joint_sensor])
+		z_meas = np.block([accelerometer_sensor, gyro_sensor])
+
+		return z_meas
 
 	def dynamics(self, x, u):
 		xdot = np.zeros((self.L))
@@ -162,16 +175,13 @@ class UKFStateEstimator(StateEstimator):
 		xdot[0:3] = v
 
 		# quaternion kinematics
-		om_hat = np.zeros((4))
-		om_hat[1:4] = om
-		xdot[3:7] = 0.5*quaternion.prod(q,om_hat)
+		xdot[3:7] = 0.5*quaternion.prod(q, quaternion.fromVector(om))
 
 		# acceleration
 		force = u[0:3] + u[3:6] + u[6:9] + u[9:12]
 		xdot[7:10] = 1/WOOFER_CONFIG.MASS * (force + np.array([0,0,-9.81]))
 
 		# angular acceleration
-		torque = np.zeros((3))
 
 		# go from world to body
 		f_fr_body = quaternion.vectorRotation(quaternion.inv(x[3:7]), quaternion.fromVector(u[0:3]))[1:4]
@@ -182,7 +192,7 @@ class UKFStateEstimator(StateEstimator):
 		# calculate torques
 		torque = np.cross(self.r_fr, f_fr_body) + np.cross(self.r_fl, f_fl_body) + np.cross(self.r_br, f_br_body) + np.cross(self.r_bl, f_bl_body)
 
-		xdot[10:13] = np.linalg.inv(self.J) @ (torque - np.cross(om, self.J @ om))
+		xdot[10:13] = self.J_inv @ (torque - np.cross(om, self.J @ om))
 
 		# foot positions
 		# xdot[13:25] = np.zeros((12,1))
@@ -196,7 +206,7 @@ class UKFStateEstimator(StateEstimator):
 	def meas(self, x, u):
 		z = np.zeros((6))
 
-		force = u[0:3] + u[3:6] + u[6:9] + u[9:12] + np.array([0,0,-9.81])
+		force = 1/WOOFER_CONFIG.MASS * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
 
 		q_a_w = quaternion.fromVector(force)
 
@@ -219,7 +229,7 @@ class UKFStateEstimator(StateEstimator):
 
 		X_x = np.zeros((self.L, n))
 
-		A = np.linalg.cholesky(self.P).T
+		A = self.alpha * np.linalg.cholesky(self.P).T
 
 		for i in range(self.L-1):
 			# do simple additive sigma point calculation
@@ -247,19 +257,9 @@ class UKFStateEstimator(StateEstimator):
 		Markley, F. Landis, et al. "Averaging quaternions."
 		Journal of Guidance, Control, and Dynamics 30.4 (2007): 1193-1197.
 		"""
+		A = Q @ np.diag(w_m) @ Q.T
 
-		qbar = np.zeros((4, 1))
-
-		Q = Q @ np.diag(w_m)
-		A = Q @ Q.T
-
-		D,V = np.linalg.eig(A)
-
-		i = np.argmax(np.absolute(D))
-
-		qbar = V[:, i]
-
-		return qbar
+		return np.linalg.eigh(A)[1][:, -1]
 
 	def calcQuatDiff(self, q_p, q_bar):
 		"""
