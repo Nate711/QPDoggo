@@ -60,12 +60,12 @@ class WooferRobot():
 
 		self.data['accelerometer_history']		= np.zeros((3,init_data_size))
 		self.data['gyro_history']				= np.zeros((3,init_data_size))
-		# self.data['joint_sensor_hist']			= np.zeros((12,init_data_size))
+		self.data['joint_sensor_hist']			= np.zeros((12,init_data_size))
 		self.data['state_history']				= np.zeros((13,init_data_size))
 		#
 		self.accelerometer_sensor 				= None
 		self.gyro_sensor 						= None
-		# self.joint_sensor						= None
+		self.joint_sensor						= None
 
 		self.dt = dt
 		self.t = 0
@@ -100,7 +100,7 @@ class WooferRobot():
 		################################### Sensor update ###################################
 		self.accelerometer_sensor = WooferDynamics.accel_sensor(sim)
 		self.gyro_sensor = WooferDynamics.gyro_sensor(sim)
-		# self.joint_sensor = WooferDynamics.joint_sensor(sim)
+		self.joint_sensor = WooferDynamics.joint_sensor(sim)
 
 		################################### Contact estimation ###################################
 		self.contacts 	= self.contact_estimator.update(sim)
@@ -196,7 +196,7 @@ class WooferRobot():
 		self.data['step_phase_history'][:,self.i]	= self.step_phase
 		self.data['accelerometer_history'][:,self.i]= self.accelerometer_sensor
 		self.data['gyro_history'][:,self.i]			= self.gyro_sensor
-		# self.data['joint_sensor_hist'][:,self.i]	= self.joint_sensor
+		self.data['joint_sensor_hist'][:,self.i]	= self.joint_sensor
 		self.data['state_history'][:,self.i]		= self.state_arr
 
 	def print_data(self):

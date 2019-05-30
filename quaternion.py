@@ -1,5 +1,5 @@
 import numpy as np
-from math import cos, sin, acos
+from math import cos, sin, acos, atan2
 
 
 ############## Quaternion Functions ##############
@@ -23,15 +23,15 @@ def exp(v):
 	q = np.zeros((4));
 
 	phi = np.linalg.norm(v)
-	eps = 1e-17
+	eps = 1e-8
 
 	if (phi > eps):
 		u = v/phi
+		q[0] = cos(phi/2)
+		q[1:4] = u*sin(phi/2)
 	else:
-		u = v
-
-	q[0] = cos(phi/2)
-	q[1:4] = u*sin(phi/2)
+		# u = v
+		q[0] = 1
 
 	return q
 
@@ -42,19 +42,23 @@ def log(q):
 	v_norm = np.linalg.norm(q[1:4])
 
 	if v_norm > eps:
-		phi = 2*acos(q[0])
+		# phi = 2*acos(q[0])
+		phi = 2*atan2(v_norm, q[0])
 		u = q[1:4]/v_norm
 
 		q_l = phi*u
 	else:
 		q_l = 2*q[1:4]/q[0]*(1 - v_norm)**2/(3*q[0]**2)
+		# q_l = np.zeros(3)
 
 	return q_l
 
 def inv(q):
 # returns the inverse of input quaternion q
-	q[1:4] = -q[1:4]
-	return q
+	a = np.zeros(4)
+	a[0] = q[0]
+	a[1:4] = -q[1:4]
+	return a
 
 def vectorRotation(q, v):
 # rotate a vector with a quaternion

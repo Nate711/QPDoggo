@@ -42,20 +42,19 @@ class UKFStateEstimator(StateEstimator):
 	"""
 	UKF based state estimation with quaternions for orientation
 	"""
-	def __init__(self, dt):
+	def __init__(self, x0, dt):
 		# self.contact_estimator = contact_estimator
-		self.x = np.zeros((19))
-		self.x[3:7] = np.array([1, 0, 0, 0])
-		self.P = 0.1 * np.eye(18)
+
+		self.x = x0
 		self.alpha = 0.15
 		self.L = np.size(self.x)
+		self.P = 0.1 * np.eye(self.L - 1)
 		self.J = WOOFER_CONFIG.INERTIA
 		self.dt = dt
 		self.J_inv = np.linalg.inv(self.J)
-		# print("x0: %s", self.x)
 
-		self.Q = 0.1 * np.eye(self.L-1)
-		self.R = 0.001 * np.eye(6)
+		self.Q = 0.01 * np.eye(self.L-1)
+		self.R = 0.01 * np.eye(6)
 
 		# leg offsets
 		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -68,6 +67,7 @@ class UKFStateEstimator(StateEstimator):
 		print("Condition number: ", np.linalg.cond(self.P))
 		# print("Sensor measurement: ", z_meas)
 		# print("Control: %s", u)
+		# print("Estimated: ", self.x)
 
 		X_x = self.calcSigmas()
 
@@ -95,27 +95,23 @@ class UKFStateEstimator(StateEstimator):
 		x_bar[3:7] = self.quaternionAverage(x_p[3:7,:], w_m)
 		x_bar[7:(self.L)] = x_p[7:(self.L),:] @ w_m
 
-		# print("Average propogated state: %s",x_bar)
-
 		z_p = np.zeros((z_meas.size, n))
 
 		# propogate predicted states through measurement model
 		for k in range(n):
 			z_p[:,k] = self.meas(x_p[:,k], u)
-
+		#
 		z_bar = z_p @ w_m
-
-		# print("Expected meas: %s",z_bar)
-		# print("Actual meas: %s", z_meas)
-
+		#
 		dX = np.zeros((self.L-1, n))
+		#
 
 		dX[0:3,:] = x_p[0:3,:] - np.tile(x_bar[0:3][np.newaxis].T, (1, n))
-		dX[3:6,:] = self.calcQuatDiff(x_p[3:7, :], x_bar[3:7])
+		dX[3:6,:] = self.calcQuatDiff(x_p[3:7, :], self.x[3:7])
 		dX[6:(self.L-1),:] = x_p[7:self.L,:] - np.tile(x_bar[7:self.L][np.newaxis].T, (1, n))
 
 		dZ = z_p - np.tile(z_bar[np.newaxis].T, (1, n))
-
+		#
 		# calculate Pxx
 		Pxx = self.Q + self.calcCovariance(dX, dX, w_c)
 
@@ -128,19 +124,23 @@ class UKFStateEstimator(StateEstimator):
 		# Innovation
 		nu = z_meas - z_bar
 
+		print("Nu: ", nu)
+
 		#Innovation Covariance
 		S = Pzz + self.R
 
 		# Kalman Gain
 		K = Pxz @ np.linalg.inv(S)
 
-		# print("K: %s", K)
-
 		x_update = K @ nu
+
+		q_prev = self.x[3:7]
 
 		# multiplicative quaternion update
 		self.x[0:3] = x_bar[0:3] + x_update[0:3]
 		self.x[3:7] = quaternion.prod(x_bar[3:7], quaternion.exp(x_update[3:6]))
+		self.x[3:7] = np.sign(q_prev.T @ self.x[3:7]) * self.x[3:7]
+
 		self.x[7:(self.L)] = x_bar[7:(self.L)] + x_update[6:(self.L-1)]
 
 		self.P = Pxx - K @ S @ K.T
@@ -178,8 +178,10 @@ class UKFStateEstimator(StateEstimator):
 		xdot[3:7] = 0.5*quaternion.prod(q, quaternion.fromVector(om))
 
 		# acceleration
+
+		# sum foot forces in the world frame
 		force = u[0:3] + u[3:6] + u[6:9] + u[9:12]
-		xdot[7:10] = 1/WOOFER_CONFIG.MASS * (force + np.array([0,0,-9.81]))
+		xdot[7:10] = 1/WOOFER_CONFIG.MASS * (force) + np.array([0,0,-9.81])
 
 		# angular acceleration
 
@@ -198,26 +200,26 @@ class UKFStateEstimator(StateEstimator):
 		# xdot[13:25] = np.zeros((12,1))
 
 		# sensor bias
-		xdot[13:16] = np.zeros((3))
-		xdot[16:19] = np.zeros((3))
+		# xdot[13:16] = np.zeros((3))
+		# xdot[16:19] = np.zeros((3))
 
 		return xdot
 
 	def meas(self, x, u):
 		z = np.zeros((6))
 
-		force = 1/WOOFER_CONFIG.MASS * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
+		a_w = 1/WOOFER_CONFIG.MASS * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
 
-		q_a_w = quaternion.fromVector(force)
+		q_a_w = quaternion.fromVector(a_w)
 
-		q_a_b = quaternion.vectorRotation(x[3:7], q_a_w)
+		q_a_b = quaternion.vectorRotation(quaternion.inv(x[3:7]), q_a_w)
 
 
 		# rotated accelerometer measurement:
-		z[0:3] = q_a_b[1:4] + x[13:16]
+		z[0:3] = q_a_b[1:4] #+ x[13:16]
 
 		# angular velocity measurement
-		z[3:6] = x[10:13] + x[16:19]
+		z[3:6] = x[10:13] #+ x[16:19]
 
 		return z
 
@@ -257,9 +259,9 @@ class UKFStateEstimator(StateEstimator):
 		Markley, F. Landis, et al. "Averaging quaternions."
 		Journal of Guidance, Control, and Dynamics 30.4 (2007): 1193-1197.
 		"""
-		A = Q @ np.diag(w_m) @ Q.T
+		A = w_m[0] * Q @ Q.T
 
-		return np.linalg.eigh(A)[1][:, -1]
+		return quaternion.normalize(np.linalg.eigh(A)[1][:, -1])
 
 	def calcQuatDiff(self, q_p, q_bar):
 		"""
