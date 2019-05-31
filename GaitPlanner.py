@@ -27,11 +27,11 @@ class StandingPlanner(GaitPlanner):
 		p_ref 		= 	np.array([	sin(phase)*0.00,
 									cos(phase)*0.00,
 									sin(phase)*0.00 + 0.32])
-		rpy_ref		= 	np.array([	sin(phase)*15*pi/180.0,
-									cos(phase)*25*pi/180.0 + 0*pi/180,
+		rpy_ref		= 	np.array([	sin(phase)*0*pi/180.0,
+									cos(phase)*10*pi/180.0 + 0*pi/180,
 									sin(phase)*0*pi/180.0])
 
-		# Boolean representation of which feet the QP controller treats as in contact with the ground. 
+		# Boolean representation of which feet the QP controller treats as in contact with the ground.
 		# A 1 in the ith slot means that the ith leg is in contact with the ground
 		active_feet = np.array([1,1,1,1])
 
@@ -39,12 +39,12 @@ class StandingPlanner(GaitPlanner):
 
 class StepPlanner(GaitPlanner):
 	"""
-	Plans two walking-trot steps forward. During the first half of the stride, 
+	Plans two walking-trot steps forward. During the first half of the stride,
 	the front-left and back-right legs are planned to be in stance. During the
 	second half of the stride, the front-right and back-left legs are planned
 	to be in stance. After the full stride, all legs are planned for stance.
 	"""
-	
+
 	def update(self, state, contacts, t, woof_config, gait_config):
 		"""
 		STEP_LENGTH: step length in meters
@@ -78,15 +78,15 @@ class StepPlanner(GaitPlanner):
 									 woof_config.LEG_FB, 				 	 		 woof_config.LEG_LR, foot_height,
 								 	-woof_config.LEG_FB, 							-woof_config.LEG_LR, foot_height,
 									-woof_config.LEG_FB + gait_config.STEP_LENGTH,   woof_config.LEG_LR, foot_height])
-			
+
 			p_foot_locs = np.array([ woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
 									 woof_config.LEG_FB,  woof_config.LEG_LR, foot_height,
 								 	-woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
 									-woof_config.LEG_FB,  woof_config.LEG_LR, foot_height])
 			active_feet = np.array([0,1,1,0])
-			
+
 			step_phase = phase * 2.0
-			
+
 		elif phase >= 0.5 and phase < 1.0:
 			# Move FL and BR forward
 			foot_locs = np.array([	 woof_config.LEG_FB + gait_config.STEP_LENGTH,	-woof_config.LEG_LR, foot_height,
@@ -117,7 +117,7 @@ class StepPlanner(GaitPlanner):
 		rpy_ref = np.array([0,0,0])
 
 		# Want the body to move forward one step length
-		CoM_x = gait_config.STEP_LENGTH * np.clip(phase,0,1) 
+		CoM_x = gait_config.STEP_LENGTH * np.clip(phase,0,1)
 		p_ref = np.array([CoM_x, 0, woof_config.LEG_L])
 
 		# print("foot placements:")

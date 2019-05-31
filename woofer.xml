@@ -34,6 +34,22 @@
 		<jointpos joint="bl_x" noise="woofer_encoder_noise"/>
 		<jointpos joint="bl_y" noise="woofer_encoder_noise"/>
 		<jointpos joint="bl_r" noise="woofer_encoder_noise"/>
+
+		<jointvel joint="fr_x" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="fr_y" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="fr_r" noise="woofer_encoder_vel_noise"/>
+
+		<jointvel joint="fl_x" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="fl_y" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="fl_r" noise="woofer_encoder_vel_noise"/>
+
+		<jointvel joint="br_x" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="br_y" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="br_r" noise="woofer_encoder_vel_noise"/>
+
+		<jointvel joint="bl_x" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="bl_y" noise="woofer_encoder_vel_noise"/>
+		<jointvel joint="bl_r" noise="woofer_encoder_vel_noise"/>
 	</sensor>
 
   <size nstack="300000" nuser_geom="1"/>

@@ -42,7 +42,7 @@ class UKFStateEstimator(StateEstimator):
 	"""
 	UKF based state estimation with quaternions for orientation
 	"""
-	def __init__(self, x0, dt):
+	def __init__(self, x0, dt): #, contact_estimator):
 		# self.contact_estimator = contact_estimator
 
 		self.x = x0
@@ -64,7 +64,7 @@ class UKFStateEstimator(StateEstimator):
 
 	def update(self, z_meas, u):#sim, u):
 		# z_meas = self.getSensorMeasurements(sim)
-		print("Condition number: ", np.linalg.cond(self.P))
+		# print("Condition number: ", np.linalg.cond(self.P))
 		# print("Sensor measurement: ", z_meas)
 		# print("Control: %s", u)
 		# print("Estimated: ", self.x)
@@ -124,7 +124,7 @@ class UKFStateEstimator(StateEstimator):
 		# Innovation
 		nu = z_meas - z_bar
 
-		print("Nu: ", nu)
+		# print("Nu: ", nu)
 
 		#Innovation Covariance
 		S = Pzz + self.R
@@ -146,8 +146,8 @@ class UKFStateEstimator(StateEstimator):
 		self.P = Pxx - K @ S @ K.T
 
 		# cheating here for now:
-		joints 		= np.zeros(3)# WooferDynamics.joints(sim)
-		joint_vel 	= np.zeros(3)# WooferDynamics.joint_vel(sim)
+		joints 		= np.zeros(12)#WooferDynamics.joints(sim)
+		joint_vel 	= np.zeros(12)#WooferDynamics.joint_vel(sim)
 
 		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":self.x[10:13], \
 						"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
@@ -200,8 +200,8 @@ class UKFStateEstimator(StateEstimator):
 		# xdot[13:25] = np.zeros((12,1))
 
 		# sensor bias
-		# xdot[13:16] = np.zeros((3))
-		# xdot[16:19] = np.zeros((3))
+		xdot[13:16] = np.zeros((3))
+		xdot[16:19] = np.zeros((3))
 
 		return xdot
 
@@ -216,10 +216,10 @@ class UKFStateEstimator(StateEstimator):
 
 
 		# rotated accelerometer measurement:
-		z[0:3] = q_a_b[1:4] #+ x[13:16]
+		z[0:3] = q_a_b[1:4] + x[13:16]
 
 		# angular velocity measurement
-		z[3:6] = x[10:13] #+ x[16:19]
+		z[3:6] = x[10:13] + x[16:19]
 
 		return z
 

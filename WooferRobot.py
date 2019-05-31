@@ -60,12 +60,14 @@ class WooferRobot():
 
 		self.data['accelerometer_history']		= np.zeros((3,init_data_size))
 		self.data['gyro_history']				= np.zeros((3,init_data_size))
-		self.data['joint_sensor_hist']			= np.zeros((12,init_data_size))
+		self.data['joint_pos_sensor_hist']		= np.zeros((12,init_data_size))
+		self.data['joint_vel_sensor_hist']		= np.zeros((12,init_data_size))
 		self.data['state_history']				= np.zeros((13,init_data_size))
 		#
 		self.accelerometer_sensor 				= None
 		self.gyro_sensor 						= None
-		self.joint_sensor						= None
+		self.joint_pos_sensor					= None
+		self.joint_vel_sensor					= None
 
 		self.dt = dt
 		self.t = 0
@@ -100,7 +102,8 @@ class WooferRobot():
 		################################### Sensor update ###################################
 		self.accelerometer_sensor = WooferDynamics.accel_sensor(sim)
 		self.gyro_sensor = WooferDynamics.gyro_sensor(sim)
-		self.joint_sensor = WooferDynamics.joint_sensor(sim)
+		self.joint_pos_sensor = WooferDynamics.joint_pos_sensor(sim)
+		self.joint_vel_sensor = WooferDynamics.joint_vel_sensor(sim)
 
 		################################### Contact estimation ###################################
 		self.contacts 	= self.contact_estimator.update(sim)
@@ -108,27 +111,37 @@ class WooferRobot():
 		################################### State estimation ###################################
 		self.state 		= self.state_estimator.update(sim, self.foot_forces)
 
-		################################### Gait planning ###################################
-		(self.step_locations, self.p_step_locations, \
-		 p_ref, rpy_ref, self.active_feet, self.phase, self.step_phase) = self.gait_planner.update(	self.state,
-																									self.contacts,
-																									self.t,
-																									WOOFER_CONFIG,
-																									GAIT_PLANNER_CONFIG)
-		# print("phase: %s"%self.phase)
+		if 0:
+			################################### Gait planning ###################################
+			(self.step_locations, self.p_step_locations, \
+			 p_ref, rpy_ref, self.active_feet, self.phase, self.step_phase) = self.gait_planner.update(	self.state,
+																										self.contacts,
+																										self.t,
+																										WOOFER_CONFIG,
+																										GAIT_PLANNER_CONFIG)
+			# print("phase: %s"%self.phase)
 
-		################################### Swing leg control ###################################
-		# TODO. Zero for now, but in the future the swing controller will provide these torques
-		self.swing_torques, \
-		self.swing_forces,\
-		self.swing_trajectory, \
-		self.foot_positions = self.swing_controller.update(	self.state,
-															self.step_phase,
-															self.step_locations,
-															self.p_step_locations,
-															self.active_feet,
-															WOOFER_CONFIG,
-															SWING_CONTROLLER_CONFIG)
+			################################### Swing leg control ###################################
+			# TODO. Zero for now, but in the future the swing controller will provide these torques
+			self.swing_torques, \
+			self.swing_forces,\
+			self.swing_trajectory, \
+			self.foot_positions = self.swing_controller.update(	self.state,
+																self.step_phase,
+																self.step_locations,
+																self.p_step_locations,
+																self.active_feet,
+																WOOFER_CONFIG,
+																SWING_CONTROLLER_CONFIG)
+		else:
+			(unused1, unused2, \
+			 p_ref, rpy_ref, self.active_feet, self.phase) = self.gait_planner.update(	self.state,
+																						self.contacts,
+																						self.t)
+
+			self.swing_torques = np.zeros(12)
+			self.swing_forces = np.zeros(12)
+			self.swing_trajectory = np.zeros(12)
 
 		################################### QP force control ###################################
 		# Rearrange the state for the qp solver
@@ -196,7 +209,8 @@ class WooferRobot():
 		self.data['step_phase_history'][:,self.i]	= self.step_phase
 		self.data['accelerometer_history'][:,self.i]= self.accelerometer_sensor
 		self.data['gyro_history'][:,self.i]			= self.gyro_sensor
-		self.data['joint_sensor_hist'][:,self.i]	= self.joint_sensor
+		self.data['joint_pos_sensor_hist'][:,self.i]= self.joint_pos_sensor
+		self.data['joint_vel_sensor_hist'][:,self.i]= self.joint_vel_sensor
 		self.data['state_history'][:,self.i]		= self.state_arr
 
 	def print_data(self):
@@ -215,7 +229,8 @@ class WooferRobot():
 		print("Joint torques: %s"	%self.torques)
 		print("Accelerometer: %s"	%self.accelerometer_sensor)
 		print("Gyro: %s"			%self.gyro_sensor)
-		# print("Joint Sensor: %s"	%self.joint_sensor)
+		print("Joint Pos Sensor: %s"%self.joint_pos_sensor)
+		print("Joint Vel Sensor: %s"%self.joint_vel_sensor)
 		print('\n')
 
 	def save_logs(self):
@@ -232,10 +247,14 @@ def MakeWoofer(dt = 0.001):
 	"""
 	mujoco_contact_est 	= MuJoCoContactEstimator()
 	mujoco_state_est 	= MuJoCoStateEstimator()
-	# ukf_state_est 		= UKFStateEstimator(dt)
+
+	# x0 = np.zeros(13)
+	# x0[2] = 0.32
+	# x0[3:7] = np.array([1, 0, 0, 0])
+	# ukf_state_est 		= UKFStateEstimator(x0, dt, mujoco_contact_est)
 	qp_controller	 	= QPBalanceController()
-	# gait_planner 		= StandingPlanner()
-	gait_planner 		= StepPlanner()
+	gait_planner 		= StandingPlanner()
+	# gait_planner 		= StepPlanner()
 	swing_controller	= PDSwingLegController()
 
 	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)

@@ -35,9 +35,10 @@ def Parse():
 
 
 	## Sensor Noise Parameters ##
-	woofer_accel_noise = 0
-	woofer_encoder_noise = 0
-	woofer_gyro_noise = 0
+	woofer_accel_noise = 0.01
+	woofer_encoder_noise = 0.01
+	woofer_gyro_noise = 0.01
+	woofer_encoder_vel_noise = 0.01
 
 	###### FILE PATHS  #####
 
@@ -87,6 +88,7 @@ def Parse():
 	filedata = filedata.replace("woofer_accel_noise", str(woofer_accel_noise))
 	filedata = filedata.replace("woofer_gyro_noise", str(woofer_gyro_noise))
 	filedata = filedata.replace("woofer_encoder_noise", str(woofer_encoder_noise))
+	filedata = filedata.replace("woofer_encoder_vel_noise", str(woofer_encoder_vel_noise))
 
 	# Write the xml file
 	with open(out_file, 'w') as file:
