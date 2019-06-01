@@ -1,5 +1,5 @@
 import numpy as np
-from math import pi, cos, sin
+from math import pi, cos, sin, fmod, floor
 
 """
 Note:
@@ -118,6 +118,66 @@ class StepPlanner(GaitPlanner):
 
 		# Want the body to move forward one step length
 		CoM_x = gait_config.STEP_LENGTH * np.clip(phase,0,1) 
+		p_ref = np.array([CoM_x, 0, woof_config.LEG_L])
+
+		# print("foot placements:")
+		# print(foot_locs)
+
+		return (foot_locs, p_foot_locs, p_ref, rpy_ref, active_feet, phase, step_phase)
+class TrotPlanner(GaitPlanner):
+	"""
+	Plans two walking-trot steps forward. During the first half of the stride, 
+	the front-left and back-right legs are planned to be in stance. During the
+	second half of the stride, the front-right and back-left legs are planned
+	to be in stance. After the full stride, all legs are planned for stance.
+	"""
+	
+	def update(self, state, contacts, t, woof_config, gait_config):
+		"""
+		STEP_LENGTH: step length in meters
+		D: duration of the total two-step move in seconds
+
+		phase: 0->0.5 & step_phase 0->1: moving FR and BL forward
+		phase: 0.5 -> 1 & step_phase 0->1: moving FL and BR forward
+
+		Note that the foot placements vector is only used as reference positions for the swing controller
+		which means that the reference foot placements are meaningless for legs in contact
+		"""
+
+		# total phase represents a fractional number of steps completed
+		total_phase 	= t/gait_config.D
+		gait_phase 		= fmod(total_phase,1.0)
+		step_number 	= floor(total_phase)
+
+
+		foot_height = woof_config.FOOT_RADIUS
+
+		START_LOCS = np.array([  woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+								 woof_config.LEG_FB,  woof_config.LEG_LR, foot_height,
+								-woof_config.LEG_FB, -woof_config.LEG_LR, foot_height,
+								-woof_config.LEG_FB,  woof_config.LEG_LR, foot_height])
+
+		foot_locs = foot_locs_start()
+		p_foot_locs = foot_locs
+
+		active_feet = np.array([1,1,1,1])
+
+		step_phase = 0
+
+		if gait_phase >= 0 and gait_phase < 0.5:
+			active_feet = np.array([0,1,1,0])
+			step_phase = phase * 2.0
+			
+		elif phase >= 0.5 and phase < 1.0:
+			active_feet = np.array([1,0,0,1])
+			step_phase = (phase - 0.5) * 2.0
+
+
+		# Want body to be level during the step
+		rpy_ref = np.array([0,0,0])
+
+		# Want the body to move forward one step length
+		CoM_x = gait_config.STEP_LENGTH * total_phase 
 		p_ref = np.array([CoM_x, 0, woof_config.LEG_L])
 
 		# print("foot placements:")

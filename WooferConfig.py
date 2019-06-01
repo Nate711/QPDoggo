@@ -29,8 +29,8 @@ class WooferConfig:
 		self.INERTIA[2,2] = Iz
 
 		self.JOINT_NOISE 	= 0.5	# Nm, 1 sigma of gaussian noise
-		self.LATENCY 		= 2		# ms of sense->control latency
-		self.UPDATE_PERIOD	= 2		# ms between control updates
+		self.LATENCY 		= 1		# ms of sense->control latency
+		self.UPDATE_PERIOD	= 1		# ms between control updates
 
 class EnvironmentConfig:
 	def __init__(self):
@@ -53,8 +53,8 @@ class SwingControllerConfig:
 
 class GaitPlannerConfig:
 	def __init__(self):
-		self.STEP_LENGTH 	= 0.2 # [m]
-		self.D 				= 0.6 # [s]
+		self.STEP_LENGTH 	= 0.15 # [m]
+		self.D 				= 0.8 # [s]
 
 WOOFER_CONFIG = WooferConfig()
 QP_CONFIG = QPConfig()
