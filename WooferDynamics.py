@@ -134,3 +134,5 @@ def joint_pos_sensor(sim):
 	return sim.data.sensordata[6:18]
 def joint_vel_sensor(sim):
 	return sim.data.sensordata[18:30]
+def force_sensor(sim):
+	return sim.data.sensordata[30:42]

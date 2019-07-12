@@ -21,7 +21,7 @@ class MuJoCoStateEstimator(StateEstimator):
 	"""
 	def __init__(self):
 		pass
-	def update(self, sim, u):
+	def update(self, sim, u, contacts):
 		"""
 		Grab the state directly from the MuJoCo sim, aka, cheat.
 		"""
@@ -53,8 +53,15 @@ class UKFStateEstimator(StateEstimator):
 		self.dt = dt
 		self.J_inv = np.linalg.inv(self.J)
 
+		# self.m = WOOFER_CONFIG.MASS
+		self.m = 7.166
+
 		self.Q = 0.01 * np.eye(self.L-1)
-		self.R = 0.01 * np.eye(6)
+
+		r = np.array([0.01, 0.01, 0.01, 0.0001, 0.0001, 0.0001])
+		self.R = np.diag(r)
+
+		# self.R = 0.01 * np.eye(6)
 
 		# leg offsets
 		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -62,12 +69,13 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, z_meas, u):#sim, u):
+	def update(self, z_meas, u_all, contacts):#sim, u, contacts):
 		# z_meas = self.getSensorMeasurements(sim)
-		# print("Condition number: ", np.linalg.cond(self.P))
-		# print("Sensor measurement: ", z_meas)
-		# print("Control: %s", u)
-		# print("Estimated: ", self.x)
+
+		# print("Condition Number: ", np.linalg.cond(self.P))
+
+		# zeros out foot forces for the feet that are not in contact
+		u = WooferDynamics.FootSelector(contacts)*u_all
 
 		X_x = self.calcSigmas()
 
@@ -157,10 +165,11 @@ class UKFStateEstimator(StateEstimator):
 	def getSensorMeasurements(self, sim):
 		accelerometer_sensor = WooferDynamics.accel_sensor(sim)
 		gyro_sensor = WooferDynamics.gyro_sensor(sim)
-		joint_sensor = WooferDynamics.joint_sensor(sim)
+		joint_pos = WooferDynamics.joint_pos_sensor(sim)
+		joint_vel = WooferDynamics.joint_vel_sensor(sim)
 
-		# z_meas = block([accelerometer_sensor, gyro_sensor, joint_sensor])
-		z_meas = np.block([accelerometer_sensor, gyro_sensor])
+		z_meas = block([accelerometer_sensor, gyro_sensor, joint_pos, joint_vel])
+		# z_meas = np.block([accelerometer_sensor, gyro_sensor])
 
 		return z_meas
 
@@ -181,7 +190,7 @@ class UKFStateEstimator(StateEstimator):
 
 		# sum foot forces in the world frame
 		force = u[0:3] + u[3:6] + u[6:9] + u[9:12]
-		xdot[7:10] = 1/WOOFER_CONFIG.MASS * (force) + np.array([0,0,-9.81])
+		xdot[7:10] = 1/self.m * (force) + np.array([0,0,-9.81])
 
 		# angular acceleration
 
@@ -196,19 +205,16 @@ class UKFStateEstimator(StateEstimator):
 
 		xdot[10:13] = self.J_inv @ (torque - np.cross(om, self.J @ om))
 
-		# foot positions
-		# xdot[13:25] = np.zeros((12,1))
-
 		# sensor bias
-		xdot[13:16] = np.zeros((3))
-		xdot[16:19] = np.zeros((3))
+		# xdot[13:16] = np.zeros((3))
+		# xdot[16:19] = np.zeros((3))
 
 		return xdot
 
 	def meas(self, x, u):
 		z = np.zeros((6))
 
-		a_w = 1/WOOFER_CONFIG.MASS * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
+		a_w = 1/self.m * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
 
 		q_a_w = quaternion.fromVector(a_w)
 
@@ -216,10 +222,14 @@ class UKFStateEstimator(StateEstimator):
 
 
 		# rotated accelerometer measurement:
-		z[0:3] = q_a_b[1:4] + x[13:16]
+		z[0:3] = q_a_b[1:4] # + x[13:16]
 
 		# angular velocity measurement
-		z[3:6] = x[10:13] + x[16:19]
+		z[3:6] = x[10:13] # + x[16:19]
+
+		# joint position measuremnts
+
+		# joint velocity measuremnts
 
 		return z
 

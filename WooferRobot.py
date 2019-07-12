@@ -62,12 +62,14 @@ class WooferRobot():
 		self.data['gyro_history']				= np.zeros((3,init_data_size))
 		self.data['joint_pos_sensor_hist']		= np.zeros((12,init_data_size))
 		self.data['joint_vel_sensor_hist']		= np.zeros((12,init_data_size))
+		self.data['force_sensor_hist']			= np.zeros((12,init_data_size))
 		self.data['state_history']				= np.zeros((13,init_data_size))
 		#
 		self.accelerometer_sensor 				= None
 		self.gyro_sensor 						= None
 		self.joint_pos_sensor					= None
 		self.joint_vel_sensor					= None
+		self.force_sensor_hist					= None
 
 		self.dt = dt
 		self.t = 0
@@ -100,16 +102,17 @@ class WooferRobot():
 		Swing controller needs reference foot landing positions and phase
 		"""
 		################################### Sensor update ###################################
-		self.accelerometer_sensor = WooferDynamics.accel_sensor(sim)
-		self.gyro_sensor = WooferDynamics.gyro_sensor(sim)
-		self.joint_pos_sensor = WooferDynamics.joint_pos_sensor(sim)
-		self.joint_vel_sensor = WooferDynamics.joint_vel_sensor(sim)
+		self.accelerometer_sensor 	= WooferDynamics.accel_sensor(sim)
+		self.gyro_sensor 			= WooferDynamics.gyro_sensor(sim)
+		self.joint_pos_sensor 		= WooferDynamics.joint_pos_sensor(sim)
+		self.joint_vel_sensor 		= WooferDynamics.joint_vel_sensor(sim)
+		self.force_sensor			= WooferDynamics.force_sensor(sim)
 
 		################################### Contact estimation ###################################
 		self.contacts 	= self.contact_estimator.update(sim)
 
 		################################### State estimation ###################################
-		self.state 		= self.state_estimator.update(sim, self.foot_forces)
+		self.state 		= self.state_estimator.update(sim, self.foot_forces, self.contacts)
 
 		if 0:
 			################################### Gait planning ###################################
@@ -165,6 +168,7 @@ class WooferRobot():
 																					self.foot_forces,
 																					WOOFER_CONFIG,
 																					QP_CONFIG)
+
 		# Expanded version of active feet
 		active_feet_12 = self.active_feet[[0,0,0,1,1,1,2,2,2,3,3,3]]
 
@@ -177,6 +181,9 @@ class WooferRobot():
 
 		# Log stuff
 		self.log_data()
+
+		print("Time: %s"			%self.t)
+		print("Sensor data: %s"			%sim.data.sensordata[30:])
 
 		# Step time forward
 		self.t += self.dt
@@ -212,25 +219,26 @@ class WooferRobot():
 		self.data['joint_pos_sensor_hist'][:,self.i]= self.joint_pos_sensor
 		self.data['joint_vel_sensor_hist'][:,self.i]= self.joint_vel_sensor
 		self.data['state_history'][:,self.i]		= self.state_arr
+		self.data['force_sensor_hist'][:,self.i]	= self.force_sensor
 
 	def print_data(self):
 		"""
 		Print debug data
 		"""
-		print("Time: %s"			%self.t)
-		print("Cartesian: %s"		%self.state['p'])
-		print("Euler angles: %s"	%rotations.quat2euler(self.state['q']))
-		print("Max gen. torques: %s"%self.max_torques.CurrentMax())
-		print("Max forces: %s"		%self.max_forces.CurrentMax())
-		print("Reference wrench: %s"%self.ref_wrench)
-		print("feet locations: %s"	%self.feet_locations)
-		print("contacts: %s"		%self.contacts)
-		print("QP feet forces: %s"	%self.foot_forces)
-		print("Joint torques: %s"	%self.torques)
-		print("Accelerometer: %s"	%self.accelerometer_sensor)
-		print("Gyro: %s"			%self.gyro_sensor)
-		print("Joint Pos Sensor: %s"%self.joint_pos_sensor)
-		print("Joint Vel Sensor: %s"%self.joint_vel_sensor)
+		# print("Time: %s"			%self.t)
+		# print("Cartesian: %s"		%self.state['p'])
+		# print("Euler angles: %s"	%rotations.quat2euler(self.state['q']))
+		# print("Max gen. torques: %s"%self.max_torques.CurrentMax())
+		# print("Max forces: %s"		%self.max_forces.CurrentMax())
+		# print("Reference wrench: %s"%self.ref_wrench)
+		# print("feet locations: %s"	%self.feet_locations)
+		# print("contacts: %s"		%self.contacts)
+		# print("QP feet forces: %s"	%self.foot_forces)
+		# print("Joint torques: %s"	%self.torques)
+		# print("Accelerometer: %s"	%self.accelerometer_sensor)
+		# print("Gyro: %s"			%self.gyro_sensor)
+		# print("Joint Pos Sensor: %s"%self.joint_pos_sensor)
+		# print("Joint Vel Sensor: %s"%self.joint_vel_sensor)
 		print('\n')
 
 	def save_logs(self):

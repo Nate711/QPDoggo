@@ -25,6 +25,8 @@ def Parse():
 
 	woofer_start_position = "0 0 %s"%(WOOFER_CONFIG.LEG_L + woofer_leg_radius)	# Initial position of the robot torso
 
+	woofer_force_geom = "0 0 0"
+
 	## Joint params ##
 	woofer_joint_range = "%s %s"		%(-WOOFER_CONFIG.REVOLUTE_RANGE, 	WOOFER_CONFIG.REVOLUTE_RANGE)	# joint range in rads for angular joints
 	woofer_joint_force_range = "%s %s"	%(-WOOFER_CONFIG.MAX_JOINT_TORQUE, 	WOOFER_CONFIG.MAX_JOINT_TORQUE) # force range for ab/ad and forward/back angular joints
@@ -39,6 +41,7 @@ def Parse():
 	woofer_encoder_noise = 0.01
 	woofer_gyro_noise = 0.01
 	woofer_encoder_vel_noise = 0.01
+	woofer_force_noise = 0
 
 	###### FILE PATHS  #####
 
@@ -83,12 +86,14 @@ def Parse():
 	filedata = filedata.replace('woofer_leg_lr', str(WOOFER_CONFIG.LEG_LR))
 	filedata = filedata.replace("woofer_leg_geom", str(woofer_leg_geom))
 	filedata = filedata.replace("woofer_start_position", str(woofer_start_position))
+	filedata = filedata.replace("woofer_force_geom", str(woofer_force_geom))
 
 	# Sensor noise
 	filedata = filedata.replace("woofer_accel_noise", str(woofer_accel_noise))
 	filedata = filedata.replace("woofer_gyro_noise", str(woofer_gyro_noise))
 	filedata = filedata.replace("woofer_encoder_noise", str(woofer_encoder_noise))
 	filedata = filedata.replace("woofer_encoder_vel_noise", str(woofer_encoder_vel_noise))
+	filedata = filedata.replace("woofer_force_noise", str(woofer_force_noise))
 
 	# Write the xml file
 	with open(out_file, 'w') as file:

@@ -7,7 +7,7 @@ from WooferConfig import WOOFER_CONFIG, ENVIRONMENT_CONFIG
 
 """
 Initailize MuJoCo
-""" 
+"""
 WooferXMLParser.Parse()
 model 	= load_model_from_path("woofer_out.xml")
 sim 	= MjSim(model)
@@ -28,7 +28,7 @@ timesteps = ENVIRONMENT_CONFIG.SIM_STEPS
 # Latency options
 latency 		= WOOFER_CONFIG.LATENCY 		# ms of latency between torque computation and application at the joint
 control_rate 	= WOOFER_CONFIG.UPDATE_PERIOD	# ms between updates (not in Hz)
-tau_history 	= np.zeros((12,timesteps))		
+tau_history 	= np.zeros((12,timesteps))
 tau_noise 		= WOOFER_CONFIG.JOINT_NOISE 	# Nm
 
 for i in range(timesteps):
@@ -41,10 +41,12 @@ for i in range(timesteps):
 		woofer.print_data()
 
 	# Run the control law according to the control rate
-	if i%control_rate == 0:
-		# Add latency and noise
-		# Note: Noise is only re-sampled when a new control is applied
-		sim.data.ctrl[:] = tau_history[:,max(0,i-latency)] + np.random.randn(12) * tau_noise
+	# if i%control_rate == 0:
+	# 	# Add latency and noise
+	# 	# Note: Noise is only re-sampled when a new control is applied
+	# 	sim.data.ctrl[:] = tau_history[:,max(0,i-latency)] + np.random.randn(12) * tau_noise
+
+	sim.data.ctrl[:] = tau
 
 	sim.step()
 	viewer.render()

@@ -27,9 +27,9 @@ class StandingPlanner(GaitPlanner):
 		p_ref 		= 	np.array([	sin(phase)*0.00,
 									cos(phase)*0.00,
 									sin(phase)*0.00 + 0.32])
-		rpy_ref		= 	np.array([	sin(phase)*0*pi/180.0,
-									cos(phase)*10*pi/180.0 + 0*pi/180,
-									sin(phase)*0*pi/180.0])
+		rpy_ref		= 	np.array([	sin(phase)*3*pi/180.0,
+									cos(phase)*3*pi/180.0 + 0*pi/180,
+									sin(phase)*3*pi/180.0])
 
 		# Boolean representation of which feet the QP controller treats as in contact with the ground.
 		# A 1 in the ith slot means that the ith leg is in contact with the ground

@@ -34,6 +34,7 @@ state_est[:,0] = x0_est
 
 # u = WOOFER_CONFIG.MASS * np.array([0, 0, 9.81/4]*4)
 u = np.array([0, 0, 0]*4)
+contacts = np.array([0, 0, 0, 0])
 
 true_state_i = x0
 for i in range(1, N):
@@ -44,7 +45,7 @@ for i in range(1, N):
 
 	# pdb.set_trace()
 
-	state_est_i = ukf_state_est.update(z_meas, u)
+	state_est_i = ukf_state_est.update(z_meas, u, contacts)
 
 	state_est[0:3, i] = state_est_i['p']
 	state_est[3:7, i] = state_est_i['q']
