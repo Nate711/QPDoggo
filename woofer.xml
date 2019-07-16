@@ -4,7 +4,7 @@
     defined in this file.
 -->
 <mujoco model="cheetah">
-  <compiler angle="radian" coordinate="local" inertiafromgeom="true" settotalmass="woofer_mass"/>
+  <compiler angle="radian" coordinate="local" inertiafromgeom="false"/>
 
   <default>
     <joint armature="woofer_armature" solimplimit="woofer_joint_solimp" solreflimit="woofer_joint_solref" stiffness="0"/>
@@ -59,7 +59,9 @@
 	</sensor>
 
   <size nstack="300000" nuser_geom="1"/>
-  <option gravity="0 0 -9.81" timestep="woofer_timestep"/>
+
+	<!-- Took out gravity="0 0 -9.81" term-->
+  <option timestep="woofer_timestep"/>
   <!-- <option gravity="0 0 0" timestep="woofer_timestep"/> -->
   <asset>
     <texture builtin="gradient" height="100" rgb1="1 1 1" rgb2="0 0 0" type="skybox" width="100"/>
@@ -79,6 +81,7 @@
       <camera name="track" mode="trackcom" pos="0 -2 0.3" xyaxes="1 0 0 0 0 1"/>
       <joint armature="0" axis="1 0 0" damping="0" limited="false" name="rootx" pos="0 0 0" stiffness="0" type="free"/>
 
+			<inertial pos="0 0 0" mass="woofer_frame_mass" diaginertia="woofer_frame_inertia"/>
       <geom pos="0 0 0" name="torso" size="woofer_half_size" type="box"/>
 
 			<site name="imu_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
@@ -88,12 +91,21 @@
 
         <joint axis="1 0 0" name="fr_x" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
 
+				<inertial pos="0 0 0" mass="woofer_module_mass" fullinertia="woofer_module_inertia"/>
+
         <body name="fr" pos="0 0 0">
           <joint axis="0 1 0" name="fr_y" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
           <joint axis="0 0 1" name="fr_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="woofer_rad_damping"/>
 
+					<inertial pos="0 0 0" mass="woofer_leg_mass" fullinertia="woofer_leg_inertia"/>
+
 					<site name="fr_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
-          <geom axisangle="0 1 0 0" name="fr" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5"/>
+          <!-- <geom axisangle="0 1 0 0" name="fr" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+          <geom axisangle="0 1 0 0" name="fr" fromto="woofer_leg_geom" size="woofer_leg_radius" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<!-- <body name="fr_end" pos="0 0 -0.32">
+						<site name="fr_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
+						<geom axisangle="0 1 0 0" name="fr_end_g" type="sphere" size="woofer_leg_radius" rgba = "1 0 0 0.5" density="0.0001"/>
+					</body> -->
         </body>
       </body>
 
@@ -101,37 +113,65 @@
         <geom pos = "0 -0.05 0" name="fl_block" type="box" size="0.08 0.04 0.04" rgba="0.6 0.8 .4 1"/>
         <joint axis="1 0 0" name="fl_x" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
 
+				<inertial pos="0 0 0" mass="woofer_module_mass" fullinertia="woofer_module_inertia"/>
+
         <body name="fl" pos="0 0 0">
           <joint axis="0 1 0" name="fl_y" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
           <joint axis="0 0 1" name="fl_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="woofer_rad_damping"/>
 
+					<inertial pos="0 0 0" mass="woofer_leg_mass" fullinertia="woofer_leg_inertia"/>
+
 					<site name="fl_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
-          <geom axisangle="0 1 0 0" name="fl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5"/>
+          <!-- <geom axisangle="0 1 0 0" name="fl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<geom axisangle="0 1 0 0" name="fl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<!-- <body name="fl_end" pos="0 0 -0.32">
+						<site name="fl_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
+						<geom axisangle="0 1 0 0" name="fl_end_g" type="sphere" size="woofer_leg_radius" rgba = "1 0 0 0.5" density="0.0001"/>
+					</body> -->
         </body>
       </body>
 
       <body name="br_module" pos="-woofer_leg_fb -woofer_leg_lr 0">
         <geom pos = "0 0.05 0" name="br_block" type="box" size="0.08 0.04 0.04" rgba="0.6 0.8 .4 1"/>
         <joint axis="1 0 0" name="br_x" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
+
+				<inertial pos="0 0 0" mass="woofer_module_mass" fullinertia="woofer_module_inertia"/>
+
         <body name="br" pos="0 0 0">
           <joint axis="0 1 0" name="br_y" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
           <joint axis="0 0 1" name="br_r" pos = "0 0 0" limited="true" range="-0.18 0.18" type = "slide" damping="woofer_rad_damping"/>
 
+					<inertial pos="0 0 0" mass="woofer_leg_mass" fullinertia="woofer_leg_inertia"/>
+
 					<site name="br_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
-          <geom axisangle="0 1 0 0" name="br" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5"/>
+          <!-- <geom axisangle="0 1 0 0" name="br" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<geom axisangle="0 1 0 0" name="br" fromto="woofer_leg_geom" size="woofer_leg_radius" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<!-- <body name="br_end" pos="0 0 -0.32">
+						<site name="br_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
+						<geom axisangle="0 1 0 0" name="br_end_g" type="sphere" size="woofer_leg_radius" rgba = "1 0 0 0.5" density="0.0001"/>
+					</body> -->
         </body>
       </body>
 
       <body name="bl_module" pos="-woofer_leg_fb woofer_leg_lr 0">
         <geom pos = "0 -0.05 0" name="bl_block" type="box" size="0.08 0.04 0.04" rgba="0.6 0.8 .4 1"/>
         <joint axis="1 0 0" name="bl_x" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
-        <body name="bl" pos="0 0 0">
 
+				<inertial pos="0 0 0" mass="woofer_module_mass" fullinertia="woofer_module_inertia"/>
+
+        <body name="bl" pos="0 0 0">
           <joint axis="0 1 0" name="bl_y" pos="0 0 0" limited="true" range="woofer_joint_range" type="hinge" damping="woofer_joint_damping"/>
           <joint axis="0 0 1" name="bl_r" pos = "0 0 0" limited="true" range="woofer_ext_range" type = "slide" damping="woofer_rad_damping"/>
 
+					<inertial pos="0 0 0" mass="woofer_leg_mass" fullinertia="woofer_leg_inertia"/>
+
 					<site name="bl_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
-          <geom axisangle="0 1 0 0" name="bl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5"/>
+          <!-- <geom axisangle="0 1 0 0" name="bl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<geom axisangle="0 1 0 0" name="bl" fromto="woofer_leg_geom" size="woofer_leg_radius" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<!-- <body name="bl_end" pos="0 0 -0.32">
+						<site name="bl_force_site" pos="woofer_force_geom" size=".01 .01 .01" type="box"/>
+						<geom axisangle="0 1 0 0" name="bl_end_g" type="sphere" size="woofer_leg_radius" rgba = "1 0 0 0.5" density="0.0001"/>
+					</body> -->
         </body>
       </body>
 

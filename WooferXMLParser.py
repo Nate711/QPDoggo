@@ -27,6 +27,15 @@ def Parse():
 
 	woofer_force_geom = "0 0 0"
 
+	## Mass/Inertia Params ##
+	woofer_frame_mass = "2"
+	woofer_module_mass = "1.033"
+	woofer_leg_mass = "0.258"
+
+	woofer_frame_inertia = "0.0065733 0.074011 0.077763"
+	woofer_module_inertia = "0.002449 0.005043 0.006616 -0.001784 -.00002 -0.000007"
+	woofer_leg_inertia = "0.003575 0.006356 0.002973 -0.0001326 -0.0001079 -0.0002538"
+
 	## Joint params ##
 	woofer_joint_range = "%s %s"		%(-WOOFER_CONFIG.REVOLUTE_RANGE, 	WOOFER_CONFIG.REVOLUTE_RANGE)	# joint range in rads for angular joints
 	woofer_joint_force_range = "%s %s"	%(-WOOFER_CONFIG.MAX_JOINT_TORQUE, 	WOOFER_CONFIG.MAX_JOINT_TORQUE) # force range for ab/ad and forward/back angular joints
@@ -79,7 +88,12 @@ def Parse():
 	filedata = filedata.replace('woofer_joint_damping', str(woofer_joint_damping))
 
 	# Geometry specs
-	filedata = filedata.replace('woofer_mass', str(WOOFER_CONFIG.MASS))
+	filedata = filedata.replace('woofer_frame_mass', str(woofer_frame_mass))
+	filedata = filedata.replace('woofer_module_mass', str(woofer_module_mass))
+	filedata = filedata.replace('woofer_leg_mass', str(woofer_leg_mass))
+	filedata = filedata.replace('woofer_frame_inertia', str(woofer_frame_inertia))
+	filedata = filedata.replace('woofer_module_inertia', str(woofer_module_inertia))
+	filedata = filedata.replace('woofer_leg_inertia', str(woofer_leg_inertia))
 	filedata = filedata.replace('woofer_leg_radius', str(woofer_leg_radius))
 	filedata = filedata.replace('woofer_half_size', str(woofer_half_size))
 	filedata = filedata.replace('woofer_leg_fb', str(WOOFER_CONFIG.LEG_FB))
