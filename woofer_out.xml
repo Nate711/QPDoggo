@@ -13,7 +13,7 @@
   </default>
 
 	<option>
-		<flag sensornoise="enable"/>
+		<flag sensornoise="disable"/>
 	</option>
 
 	<sensor>
@@ -101,7 +101,7 @@
 
 					<site name="fr_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
           <!-- <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
-          <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.32" size="0.02" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+          <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
 					<!-- <body name="fr_end" pos="0 0 -0.32">
 						<site name="fr_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
 						<geom axisangle="0 1 0 0" name="fr_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
@@ -123,7 +123,7 @@
 
 					<site name="fl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
           <!-- <geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
-					<geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.32" size="0.02" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
 					<!-- <body name="fl_end" pos="0 0 -0.32">
 						<site name="fl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
 						<geom axisangle="0 1 0 0" name="fl_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
@@ -145,7 +145,7 @@
 
 					<site name="br_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
           <!-- <geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
-					<geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.32" size="0.02" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
 					<!-- <body name="br_end" pos="0 0 -0.32">
 						<site name="br_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
 						<geom axisangle="0 1 0 0" name="br_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
@@ -167,7 +167,7 @@
 
 					<site name="bl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
           <!-- <geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
-					<geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.32" size="0.02" type="cylinder" rgba = "1 0 0 0.5" density="50"/>
+					<geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
 					<!-- <body name="bl_end" pos="0 0 -0.32">
 						<site name="bl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
 						<geom axisangle="0 1 0 0" name="bl_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
