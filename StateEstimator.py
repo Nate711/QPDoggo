@@ -1,6 +1,8 @@
 import WooferDynamics
 import numpy as np
 import quaternion
+import MathUtils
+import rotations
 
 from WooferConfig import WOOFER_CONFIG
 
@@ -42,9 +44,7 @@ class UKFStateEstimator(StateEstimator):
 	"""
 	UKF based state estimation with quaternions for orientation
 	"""
-	def __init__(self, x0, dt): #, contact_estimator):
-		# self.contact_estimator = contact_estimator
-
+	def __init__(self, x0, dt):
 		self.x = x0
 		self.alpha = 0.15
 		self.L = np.size(self.x)
@@ -53,15 +53,19 @@ class UKFStateEstimator(StateEstimator):
 		self.dt = dt
 		self.J_inv = np.linalg.inv(self.J)
 
-		# self.m = WOOFER_CONFIG.MASS
-		self.m = 7.166
+		self.m = WOOFER_CONFIG.MASS
 
-		self.Q = 0.01 * np.eye(self.L-1)
+		self.Q = 0.1 * np.eye(self.L-1)
+		# self.Q = np.diag(np.block([0.1*np.ones(3), 0.1*np.ones(3), 0.1*np.ones(3), 0.1*np.ones(3)]))
 
-		r = np.array([0.01, 0.01, 0.01, 0.0001, 0.0001, 0.0001])
-		self.R = np.diag(r)
+		self.clean_residual = 0.001
+		self.noisy_residual = 1
 
-		# self.R = 0.01 * np.eye(6)
+		self.r = np.block([0.001*np.ones(3), 0.001*np.ones(3), self.noisy_residual*np.ones(24)])
+		self.R = np.diag(self.r)
+
+		self.contacts = np.zeros(4)
+		self.global_foot_locs = np.zeros(12)
 
 		# leg offsets
 		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -69,10 +73,27 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, z_meas, u_all, contacts):#sim, u, contacts):
+	def update(self, z_meas, u_all, contacts):#sim, u_all, contacts):
 		# z_meas = self.getSensorMeasurements(sim)
 
 		# print("Condition Number: ", np.linalg.cond(self.P))
+
+		# update global foot locations if necessary
+		for i in range(4):
+			if(contacts[i] != self.contacts[i]):
+				if(contacts[i] == 1):
+					# do forward kinematics to get new foot locations
+					meas_index = 6 + 3*i
+					self.global_foot_locs[3*i:3*i+3] = self.x[0:3] + WooferDynamics.SingleLegForwardKinematics(self.x[3:7], z_meas[meas_index:meas_index+3], i)
+					print("New foot location: ", self.global_foot_locs[3*i:3*i+3])
+
+					# update position/velocity residual covariance for that foot
+					self.r[6+6*i:12+6*i] = self.clean_residual*np.ones(6)
+				else:
+					self.r[6+6*i:12+6*i] = self.noisy_residual*np.ones(6)
+
+				self.R = np.diag(self.r)
+				self.contacts[i] = contacts[i]
 
 		# zeros out foot forces for the feet that are not in contact
 		u = WooferDynamics.FootSelector(contacts)*u_all
@@ -107,7 +128,7 @@ class UKFStateEstimator(StateEstimator):
 
 		# propogate predicted states through measurement model
 		for k in range(n):
-			z_p[:,k] = self.meas(x_p[:,k], u)
+			z_p[:,k] = self.meas(x_p[:,k], u, z_meas[6:18], z_meas[18:30])
 		#
 		z_bar = z_p @ w_m
 		#
@@ -130,9 +151,10 @@ class UKFStateEstimator(StateEstimator):
 		Pzz = self.calcCovariance(dZ, dZ, w_c)
 
 		# Innovation
-		nu = z_meas - z_bar
-
-		# print("Nu: ", nu)
+		nu = np.zeros(self.r.shape)
+		nu[0:6] = z_meas[0:6] - z_bar[0:6]
+		nu[6:] = -z_bar[6:]
+		# print("Nu residual norm: ", np.linalg.norm(nu[6:]))
 
 		#Innovation Covariance
 		S = Pzz + self.R
@@ -153,9 +175,8 @@ class UKFStateEstimator(StateEstimator):
 
 		self.P = Pxx - K @ S @ K.T
 
-		# cheating here for now:
-		joints 		= np.zeros(12)#WooferDynamics.joints(sim)
-		joint_vel 	= np.zeros(12)#WooferDynamics.joint_vel(sim)
+		joints 		= z_meas[6:18]
+		joint_vel 	= z_meas[18:30]
 
 		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":self.x[10:13], \
 						"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
@@ -168,7 +189,7 @@ class UKFStateEstimator(StateEstimator):
 		joint_pos = WooferDynamics.joint_pos_sensor(sim)
 		joint_vel = WooferDynamics.joint_vel_sensor(sim)
 
-		z_meas = block([accelerometer_sensor, gyro_sensor, joint_pos, joint_vel])
+		z_meas = np.block([accelerometer_sensor, gyro_sensor, joint_pos, joint_vel])
 		# z_meas = np.block([accelerometer_sensor, gyro_sensor])
 
 		return z_meas
@@ -211,8 +232,8 @@ class UKFStateEstimator(StateEstimator):
 
 		return xdot
 
-	def meas(self, x, u):
-		z = np.zeros((6))
+	def meas(self, x, u, joint_pos, joint_vel):
+		z = np.zeros(self.r.size)
 
 		a_w = 1/self.m * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
 
@@ -227,9 +248,21 @@ class UKFStateEstimator(StateEstimator):
 		# angular velocity measurement
 		z[3:6] = x[10:13] # + x[16:19]
 
-		# joint position measuremnts
+		# position/velocity residual for front right leg
+		z[6:9] = (self.global_foot_locs[0:3] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[0:3], 0)
+		z[9:12] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[0:3], 0)
 
-		# joint velocity measuremnts
+		# position/velocity residual for front left leg
+		z[12:15] = (self.global_foot_locs[3:6] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[3:6], 1)
+		z[15:18] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[3:6], 1)
+
+		# position/velocity residual for back right leg
+		z[18:21] = (self.global_foot_locs[6:9] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[6:9], 2)
+		z[21:24] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[6:9], 2)
+
+		# position/velocity residual for back left leg
+		z[24:27] = (self.global_foot_locs[9:12] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[9:12], 3)
+		z[27:30] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[9:12], 3)
 
 		return z
 

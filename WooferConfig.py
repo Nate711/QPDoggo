@@ -17,7 +17,7 @@ class WooferConfig:
 		self.FOOT_RADIUS = 0.02
 
 		# Robot inertia params
-		self.MASS = 8.0 # kg
+		self.MASS = 6.135 # kg
 
 		(self.L,self.W,self.T) = (0.66, 0.176, 0.092)
 		Ix = self.MASS/12 * (self.W**2 + self.T**2)
@@ -35,7 +35,7 @@ class WooferConfig:
 class EnvironmentConfig:
 	def __init__(self):
 		self.MU 			= 1.5 	# coeff friction
-		self.SIM_STEPS 		= 1500 	# simulation steps to take
+		self.SIM_STEPS 		= 5000 	# simulation steps to take
 		self.DT 			= 0.001 # timestep [s]
 
 # Software stuff

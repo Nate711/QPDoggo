@@ -36,6 +36,39 @@ def LegForwardKinematics(quat_orientation, joints):
 	feet_world = np.dot(rotations.quat2mat(quat_orientation), feet_col_stack)
 	return feet_world.T.reshape(12)
 
+def SingleLegForwardKinematics(quat_orientation, joints, foot_selector):
+	"""
+	Gives the North-East-Down (NED)-style coordinates of a single foot. NED coordinates are coordinates in a noninertial reference frame
+	attached to the CoM of the robot. The axes of the NED frame are parallel to the x, y, and z axes in this simulation.
+
+	quat_orientation:	unit quaternion for body orientation
+	joints: 			joint angles in qpos ordering
+	foot_selector:		0 = fr, 1 = fl, 2 = br, 3 = bl
+	"""
+
+	def LegFK(abad, for_back, radial, handedness):
+		hands = {"left":1, "right":-1}
+		offset = hands[handedness]*(WOOFER_CONFIG.ABDUCTION_OFFSET)
+		leg_unrotated = np.array([0, offset, -WOOFER_CONFIG.LEG_L + radial])
+		R = rotations.euler2mat([abad, for_back, 0])	# rotation matrix for abduction, then forward back
+		foot = np.dot(R,leg_unrotated)
+		return foot
+
+	# Get foot locations in local body coordinates
+	# Right-handedness of frame means y is positive in the LEFT direction
+	if(foot_selector == 0):
+		foot = LegFK(joints[0], joints[1], joints[2], "right") + np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	elif(foot_selector == 1):
+		foot = LegFK(joints[0], joints[1], joints[2], "left")  + np.array([WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+	elif(foot_selector == 2):
+		foot = LegFK(joints[0], joints[1], joints[2], "right") + np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	elif(foot_selector == 3):
+		foot = LegFK(joints[0], joints[1],joints[2],"left")  + np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+
+	# Transform into world coordinates (centered around robot COM)
+	foot_world = np.dot(rotations.quat2mat(quat_orientation), foot)
+	return foot_world
+
 def FootLocationsWorld(state):
 	"""
 	state: dictionary of state variables

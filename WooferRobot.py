@@ -182,9 +182,6 @@ class WooferRobot():
 		# Log stuff
 		self.log_data()
 
-		print("Time: %s"			%self.t)
-		print("Sensor data: %s"			%sim.data.sensordata[30:])
-
 		# Step time forward
 		self.t += self.dt
 		self.i += 1
@@ -256,10 +253,10 @@ def MakeWoofer(dt = 0.001):
 	mujoco_contact_est 	= MuJoCoContactEstimator()
 	mujoco_state_est 	= MuJoCoStateEstimator()
 
-	# x0 = np.zeros(13)
-	# x0[2] = 0.32
-	# x0[3:7] = np.array([1, 0, 0, 0])
-	# ukf_state_est 		= UKFStateEstimator(x0, dt, mujoco_contact_est)
+	x0 = np.zeros(13)
+	x0[2] = 0.32
+	x0[3:7] = np.array([1, 0, 0, 0])
+	ukf_state_est 		= UKFStateEstimator(x0, dt)
 	qp_controller	 	= QPBalanceController()
 	gait_planner 		= StandingPlanner()
 	# gait_planner 		= StepPlanner()

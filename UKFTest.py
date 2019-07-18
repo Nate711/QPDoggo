@@ -16,37 +16,32 @@ data = np.load('woofer_numpy_log.npz')
 
 n = np.shape(data['state_history'])[1]
 
-n = 1400
+n = 1000
 
 state_est = np.zeros((L, n))
 
 state_est[:,0] = x0
 
 for i in range(1, n):
-	# accel_meas = data['accelerometer_history'][:, i]
-
-	# accel_u_w_est = -1/WOOFER_CONFIG.MASS * (data['force_sensor_hist'][0:3, i] + data['force_sensor_hist'][3:6, i] + data['force_sensor_hist'][6:9, i] + data['force_sensor_hist'][9:12, i])
-	accel_u_w_est = -1/7.166 * (data['force_sensor_hist'][0:3, i] + data['force_sensor_hist'][3:6, i] + data['force_sensor_hist'][6:9, i] + data['force_sensor_hist'][9:12, i])
-	accel_meas = quaternion.vectorRotation(quaternion.inv(data['state_history'][3:7,i]), quaternion.fromVector(accel_u_w_est))[1:4]
-
-	print("Force in world frame ", accel_u_w_est)
-	# print("Predicted accelerometer measurement: ", accel_meas)
-
-	# gyro_meas = data['gyro_history'][:, i]
-	gyro_meas = data['state_history'][10:13,i]
+	accel_meas = data['accelerometer_history'][:, i]
+	gyro_meas = data['gyro_history'][:, i]
 
 	joint_pos_meas = data['joint_pos_sensor_hist'][:, i]
 	joint_vel_meas = data['joint_vel_sensor_hist'][:, i]
 
-	# z_meas = np.concatenate([accel_meas, gyro_meas, joint_pos_meas, joint_vel_meas])
-	z_meas = np.concatenate([accel_meas, gyro_meas])
+	z_meas = np.concatenate([accel_meas, gyro_meas, joint_pos_meas, joint_vel_meas])
+	# z_meas = np.concatenate([accel_meas, gyro_meas])
 
 	# u = np.zeros(12)
 
-	u = data['force_history'][:, i-1]
-	# u = -data['force_sensor_hist'][:, i-1]
+	# u = data['force_history'][:, i-1]
+	u = -data['force_sensor_hist'][:, i-1]
 
 	contacts = data['contacts_history'][:,i]
+	# contacts = np.array([1, 1, 1, 1])
+	# contacts = np.zeros(4)
+
+	# print(contacts)
 
 	u_active = contacts[[0,0,0,1,1,1,2,2,2,3,3,3]] * u
 	#
