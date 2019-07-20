@@ -72,8 +72,8 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, z_meas, contacts):#sim, u_all, contacts):
-		# z_meas = self.getSensorMeasurements(sim)
+	def update(self, sim, contacts):#sim, u_all, contacts):
+		z_meas = self.getSensorMeasurements(sim)
 
 		# print("Condition Number: ", np.linalg.cond(self.P))
 
@@ -171,7 +171,7 @@ class UKFStateEstimator(StateEstimator):
 		joints 		= z_meas[6:18]
 		joint_vel 	= z_meas[18:30]
 
-		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":self.x[10:13], \
+		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":z_meas[3:6], \
 						"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
 
 		return state_est

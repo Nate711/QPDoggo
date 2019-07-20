@@ -112,7 +112,7 @@ class WooferRobot():
 		self.contacts 	= self.contact_estimator.update(sim)
 
 		################################### State estimation ###################################
-		self.state 		= self.state_estimator.update(sim, self.foot_forces, self.contacts)
+		self.state 		= self.state_estimator.update(sim, self.contacts)
 
 		if 0:
 			################################### Gait planning ###################################
@@ -253,7 +253,7 @@ def MakeWoofer(dt = 0.001):
 	mujoco_contact_est 	= MuJoCoContactEstimator()
 	mujoco_state_est 	= MuJoCoStateEstimator()
 
-	x0 = np.zeros(13)
+	x0 = np.zeros(10)
 	x0[2] = 0.32
 	x0[3:7] = np.array([1, 0, 0, 0])
 	ukf_state_est 		= UKFStateEstimator(x0, dt)
@@ -262,7 +262,7 @@ def MakeWoofer(dt = 0.001):
 	# gait_planner 		= StepPlanner()
 	swing_controller	= PDSwingLegController()
 
-	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
-	# woofer = WooferRobot(ukf_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
+	# woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
+	woofer = WooferRobot(ukf_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
 
 	return woofer
