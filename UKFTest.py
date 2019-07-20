@@ -4,7 +4,7 @@ from WooferConfig import WOOFER_CONFIG
 import pdb
 import quaternion
 
-L = 13
+L = 10
 
 x0 = np.zeros(L)
 x0[2] = 0.34
@@ -16,7 +16,7 @@ data = np.load('woofer_numpy_log.npz')
 
 n = np.shape(data['state_history'])[1]
 
-n = 1000
+n = 4500
 
 state_est = np.zeros((L, n))
 
@@ -35,7 +35,7 @@ for i in range(1, n):
 	# u = np.zeros(12)
 
 	# u = data['force_history'][:, i-1]
-	u = -data['force_sensor_hist'][:, i-1]
+	# u = -data['force_sensor_hist'][:, i-1]
 
 	contacts = data['contacts_history'][:,i]
 	# contacts = np.array([1, 1, 1, 1])
@@ -43,7 +43,7 @@ for i in range(1, n):
 
 	# print(contacts)
 
-	u_active = contacts[[0,0,0,1,1,1,2,2,2,3,3,3]] * u
+	# u_active = contacts[[0,0,0,1,1,1,2,2,2,3,3,3]] * u
 	#
 	# if i>30:
 	# 	pdb.set_trace()
@@ -56,7 +56,7 @@ for i in range(1, n):
 	# u_active[8] = WOOFER_CONFIG.MASS * 9.81/4
 	# u_active[11] = WOOFER_CONFIG.MASS * 9.81/4
 	#
-	state_i = ukf_state_est.update(z_meas, u, contacts)
+	state_i = ukf_state_est.update(z_meas, contacts)
 
 	state_est[0:3, i] = state_i['p']
 	state_est[3:7, i] = state_i['q']

@@ -61,11 +61,10 @@ class UKFStateEstimator(StateEstimator):
 		self.clean_residual = 0.001
 		self.noisy_residual = 1
 
-		self.r = np.block([0.001*np.ones(3), 0.001*np.ones(3), self.noisy_residual*np.ones(24)])
+		self.r = np.block([self.noisy_residual*np.ones(12)])
 		self.R = np.diag(self.r)
 
 		self.contacts = np.zeros(4)
-		self.global_foot_locs = np.zeros(12)
 
 		# leg offsets
 		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
@@ -73,7 +72,7 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, z_meas, u_all, contacts):#sim, u_all, contacts):
+	def update(self, z_meas, contacts):#sim, u_all, contacts):
 		# z_meas = self.getSensorMeasurements(sim)
 
 		# print("Condition Number: ", np.linalg.cond(self.P))
@@ -82,21 +81,13 @@ class UKFStateEstimator(StateEstimator):
 		for i in range(4):
 			if(contacts[i] != self.contacts[i]):
 				if(contacts[i] == 1):
-					# do forward kinematics to get new foot locations
-					meas_index = 6 + 3*i
-					self.global_foot_locs[3*i:3*i+3] = self.x[0:3] + WooferDynamics.SingleLegForwardKinematics(self.x[3:7], z_meas[meas_index:meas_index+3], i)
-					print("New foot location: ", self.global_foot_locs[3*i:3*i+3])
-
 					# update position/velocity residual covariance for that foot
-					self.r[6+6*i:12+6*i] = self.clean_residual*np.ones(6)
+					self.r[3*i:3+3*i] = self.clean_residual*np.ones(3)
 				else:
-					self.r[6+6*i:12+6*i] = self.noisy_residual*np.ones(6)
+					self.r[3*i:3+3*i] = self.noisy_residual*np.ones(6)
 
 				self.R = np.diag(self.r)
 				self.contacts[i] = contacts[i]
-
-		# zeros out foot forces for the feet that are not in contact
-		u = WooferDynamics.FootSelector(contacts)*u_all
 
 		X_x = self.calcSigmas()
 
@@ -111,10 +102,10 @@ class UKFStateEstimator(StateEstimator):
 
 		# propogate sigma points through dynamics via RK4 integration
 		for k in range(n):
-			k1 = self.dt*self.dynamics(X_x[:,k], u)
-			k2 = self.dt*self.dynamics(X_x[:,k]+k1/2, u)
-			k3 = self.dt*self.dynamics(X_x[:,k]+k2/2, u)
-			k4 = self.dt*self.dynamics(X_x[:,k]+k3, u)
+			k1 = self.dt*self.dynamics(X_x[:,k], z_meas)
+			k2 = self.dt*self.dynamics(X_x[:,k]+k1/2, z_meas)
+			k3 = self.dt*self.dynamics(X_x[:,k]+k2/2, z_meas)
+			k4 = self.dt*self.dynamics(X_x[:,k]+k3, z_meas)
 			x_p[:,k] = X_x[:,k] + (k1+2*k2+2*k3+k4)/6
 			x_p[3:7,k] = quaternion.normalize(x_p[3:7,k])
 
@@ -124,11 +115,11 @@ class UKFStateEstimator(StateEstimator):
 		x_bar[3:7] = self.quaternionAverage(x_p[3:7,:], w_m)
 		x_bar[7:(self.L)] = x_p[7:(self.L),:] @ w_m
 
-		z_p = np.zeros((z_meas.size, n))
+		z_p = np.zeros((self.r.size, n))
 
 		# propogate predicted states through measurement model
 		for k in range(n):
-			z_p[:,k] = self.meas(x_p[:,k], u, z_meas[6:18], z_meas[18:30])
+			z_p[:,k] = self.meas(x_p[:,k], z_meas)
 		#
 		z_bar = z_p @ w_m
 		#
@@ -150,10 +141,12 @@ class UKFStateEstimator(StateEstimator):
 		# calculate Pzz
 		Pzz = self.calcCovariance(dZ, dZ, w_c)
 
+		kinematic_vel = self.kinematics(self.x, z_meas)
+
 		# Innovation
 		nu = np.zeros(self.r.shape)
-		nu[0:6] = z_meas[0:6] - z_bar[0:6]
-		nu[6:] = -z_bar[6:]
+		nu = kinematic_vel - z_bar
+
 		# print("Nu residual norm: ", np.linalg.norm(nu[6:]))
 
 		#Innovation Covariance
@@ -199,7 +192,9 @@ class UKFStateEstimator(StateEstimator):
 
 		q = x[3:7]
 		v = x[7:10]
-		om = x[10:13]
+
+		a = u[0:3]
+		om = u[3:6]
 
 		# velocity
 		xdot[0:3] = v
@@ -210,21 +205,7 @@ class UKFStateEstimator(StateEstimator):
 		# acceleration
 
 		# sum foot forces in the world frame
-		force = u[0:3] + u[3:6] + u[6:9] + u[9:12]
-		xdot[7:10] = 1/self.m * (force) + np.array([0,0,-9.81])
-
-		# angular acceleration
-
-		# go from world to body
-		f_fr_body = quaternion.vectorRotation(quaternion.inv(x[3:7]), quaternion.fromVector(u[0:3]))[1:4]
-		f_fl_body = quaternion.vectorRotation(quaternion.inv(x[3:7]), quaternion.fromVector(u[3:6]))[1:4]
-		f_br_body = quaternion.vectorRotation(quaternion.inv(x[3:7]), quaternion.fromVector(u[6:9]))[1:4]
-		f_bl_body = quaternion.vectorRotation(quaternion.inv(x[3:7]), quaternion.fromVector(u[9:12]))[1:4]
-
-		# calculate torques
-		torque = np.cross(self.r_fr, f_fr_body) + np.cross(self.r_fl, f_fl_body) + np.cross(self.r_br, f_br_body) + np.cross(self.r_bl, f_bl_body)
-
-		xdot[10:13] = self.J_inv @ (torque - np.cross(om, self.J @ om))
+		xdot[7:10] = quaternion.vectorRotation(x[3:7], quaternion.fromVector(a))[1:4] + np.array([0,0,-9.81])
 
 		# sensor bias
 		# xdot[13:16] = np.zeros((3))
@@ -232,37 +213,37 @@ class UKFStateEstimator(StateEstimator):
 
 		return xdot
 
-	def meas(self, x, u, joint_pos, joint_vel):
+	def meas(self, x, u):
 		z = np.zeros(self.r.size)
 
-		a_w = 1/self.m * (u[0:3] + u[3:6] + u[6:9] + u[9:12])
-
-		q_a_w = quaternion.fromVector(a_w)
-
-		q_a_b = quaternion.vectorRotation(quaternion.inv(x[3:7]), q_a_w)
-
-
-		# rotated accelerometer measurement:
-		z[0:3] = q_a_b[1:4] # + x[13:16]
-
-		# angular velocity measurement
-		z[3:6] = x[10:13] # + x[16:19]
-
 		# position/velocity residual for front right leg
-		z[6:9] = (self.global_foot_locs[0:3] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[0:3], 0)
-		z[9:12] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[0:3], 0)
+		z[0:3] = self.x[7:10]
 
 		# position/velocity residual for front left leg
-		z[12:15] = (self.global_foot_locs[3:6] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[3:6], 1)
-		z[15:18] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[3:6], 1)
+		z[3:6] = self.x[7:10]
 
 		# position/velocity residual for back right leg
-		z[18:21] = (self.global_foot_locs[6:9] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[6:9], 2)
-		z[21:24] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[6:9], 2)
+		z[6:9] = self.x[7:10]
 
 		# position/velocity residual for back left leg
-		z[24:27] = (self.global_foot_locs[9:12] - x[0:3]) - WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[9:12], 3)
-		z[27:30] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - self.x[7:10] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(x[10:13]) @ WooferDynamics.SingleLegForwardKinematics(x[3:7], joint_pos[9:12], 3)
+		z[9:12] = self.x[7:10]
+
+		return z
+
+	def kinematics(self, x, u):
+		"""
+		return the predicted velocity of the COM from kinematics
+		"""
+
+		joint_pos = u[6:18]
+		joint_vel = u[18:30]
+		om = u[3:6]
+		z = np.zeros(self.r.size)
+
+		z[0:3] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fr
+		z[3:6] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fl
+		z[6:9] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_br
+		z[9:12] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_bl
 
 		return z
 

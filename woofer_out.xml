@@ -13,7 +13,7 @@
   </default>
 
 	<option>
-		<flag sensornoise="disable"/>
+		<flag sensornoise="enable"/>
 	</option>
 
 	<sensor>
