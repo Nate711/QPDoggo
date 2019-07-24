@@ -23,7 +23,7 @@ class MuJoCoStateEstimator(StateEstimator):
 	"""
 	def __init__(self):
 		pass
-	def update(self, sim, u, contacts):
+	def update(self, sim, contacts):
 		"""
 		Grab the state directly from the MuJoCo sim, aka, cheat.
 		"""
@@ -39,6 +39,179 @@ class MuJoCoStateEstimator(StateEstimator):
 		state_est = {"p":xyz, "p_d":v_xyz, "q":quat_orien, "w":ang_vel, "j":joints, "j_d":joint_vel}
 
 		return state_est
+
+class EKFVelocityStateEstimator(StateEstimator):
+	"""
+	EKF based state estimator with only roll/pitch for orientation
+	"""
+	def __init__(self, x0, dt):
+		"""
+		x = [v(body frame) roll pitch]
+		"""
+		self.x = x0
+		self.L = np.size(self.x)
+		self.dt = dt
+		self.g = np.array([0, 0, 9.81])
+
+		self.r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+		self.r_fl = np.array([WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+
+		self.clean_residual = 0.01
+		self.noisy_residual = 1
+
+		self.P = np.diag(np.block([0.01*np.ones(3), 0.01*np.ones(2)]))
+
+		self.Q = np.diag(np.block([0.1*np.ones(3), 0.01*np.ones(2)]))
+
+		self.r = np.block([self.clean_residual*np.ones(12)])
+		self.R = np.diag(self.r)
+
+		self.i = 0
+
+	def update(self, z_meas, contacts):
+		"""
+		z_meas = [accelerometer gyro joint_pos joint_vel]
+		"""
+
+		f_b = z_meas[0:3]
+		om_b = z_meas[3:6]
+
+		## Dynamics propogation ##
+		xdot = np.zeros(5)
+		xdot[0:3] = f_b - self.bodyGravityVector() #- MathUtils.CrossProductMatrix(om_b) @ self.x[0:3]
+		xdot[3] = om_b[0] * self.toQuaternionScalar() + 0.5*self.x[4]*om_b[2]
+		xdot[4] = om_b[1] * self.toQuaternionScalar() + 0.5*self.x[3]*om_b[2]
+
+		A = np.zeros((5,5))
+		# dv/dv
+		A[0:3,0:3] = np.eye(3) - MathUtils.CrossProductMatrix(om_b)*self.dt
+
+		dqvdphi = np.array([0.5, 0, 0])
+		dqvdtheta = np.array([0, 0.5, 0])
+
+		dqsdphi = -0.25*self.x[3]/self.toQuaternionScalar()
+		dqsdtheta = -0.25*self.x[4]/self.toQuaternionScalar()
+
+		# dv/dphi
+		A[0:3, 3] = -self.dt*((-2*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ MathUtils.CrossProductMatrix(self.g)\
+		 			-2*MathUtils.CrossProductMatrix(MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ self.g) +\
+					2*self.toQuaternionScalar()*MathUtils.CrossProductMatrix(self.g)) @ dqvdphi - \
+					2*dqsdphi*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ self.g)
+		# dv/dtheta
+		A[0:3, 4] = -self.dt*((-2*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ MathUtils.CrossProductMatrix(self.g)\
+		 			-2*MathUtils.CrossProductMatrix(MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ self.g) +\
+					2*self.toQuaternionScalar()*MathUtils.CrossProductMatrix(self.g)) @ dqvdtheta - \
+					2*dqsdtheta*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ self.g)
+
+		# dphi/dphi
+		A[3,3] = 1 - 0.25*om_b[0]*self.x[3]*self.dt/self.toQuaternionScalar()
+		# dphi/dtheta
+		A[3,4] = (-0.25*om_b[0]*self.x[4]/self.toQuaternionScalar() + 0.5*om_b[2])*self.dt
+		# dtheta/dphi
+		A[4,3] = (-0.25*om_b[1]*self.x[3]/self.toQuaternionScalar() + 0.5*om_b[2])*self.dt
+		# dtheta/dtheta
+		A[4,4] = 1 - 0.25*om_b[0]*self.x[4]*self.dt/self.toQuaternionScalar()
+
+		# swtich to RK4?
+		x_ = self.x + xdot*self.dt
+		P_ = A @ self.P @ A.T + self.Q
+
+		## measurement update ##
+		C = np.zeros((12,5))
+		C[0:3,0:3] = np.eye(3)
+		C[3:6,0:3] = np.eye(3)
+		C[6:9,0:3] = np.eye(3)
+		C[9:12,0:3] = np.eye(3)
+
+		y_kinematic = self.kinematics(x_, z_meas)
+		nu = np.zeros(12)#C @ x_ - y_kinematic
+
+		# print("v_b: ", C @ x_)
+		# print("Nu: ", nu)
+
+		S = C @ P_ @ C.T + self.R
+
+		K = P_ @ C.T @ np.linalg.inv(S)
+		# print("Kalman Gain: ", K[3:5,:])
+		# print("Roll/Pitch Update: ", (K@nu)[3:5])
+
+		self.x = x_ + K @ nu
+		self.P = P_ - K @ S @ K.T
+
+		joints 		= z_meas[6:18]
+		joint_vel 	= z_meas[18:30]
+
+		# if(self.i % 100 == 0):
+		# 	print("Covariance: ", P_)
+		# 	print("Innovation Covariance: ", S)
+
+		self.i = self.i + 1
+		return (self.x, y_kinematic)
+
+	def toQuaternion(self):
+		"""
+		returns the quaternion of the roll/pitch components
+		"""
+		q = np.zeros(4)
+		q[0] = np.sqrt(1 - 0.25*(self.x[3]**2 + self.x[4]**2))
+		q[1] = 0.5 * self.x[3]
+		q[2] = 0.5 * self.x[4]
+
+		return q
+
+	def toQuaternionScalar(self):
+		"""
+		returns the scalar part of the quaternion
+		"""
+		return np.sqrt(1 - 0.25*(self.x[3]**2 + self.x[4]**2))
+
+	def toQuaternionVector(self):
+		"""
+		returns the vector part of the quaternion
+		"""
+		q = np.zeros(3)
+		q[0] = 0.5*self.x[3]
+		q[1] = 0.5*self.x[4]
+		return q
+
+	def kinematics(self, x, u):
+		"""
+		return the predicted body frame velocity of the COM from kinematics
+		"""
+
+		joint_pos = u[6:18]
+		joint_vel = u[18:30]
+		om = u[3:6]
+		y = np.zeros(self.r.size)
+
+		# print("Mine: ", WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]))
+		# print("Nathan: ", WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]))
+
+		y[0:3] = -WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ self.r_fr
+		# y[0:3] = MathUtils.CrossProductMatrix(om) @ self.r_fr
+		y[3:6] = -WooferDynamics.LegJacobian2(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ self.r_fl
+		# y[3:6] = MathUtils.CrossProductMatrix(om) @ self.r_fl
+		y[6:9] = -WooferDynamics.LegJacobian2(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ self.r_br
+		# y[6:9] = MathUtils.CrossProductMatrix(om) @ self.r_br
+		y[9:12] = -WooferDynamics.LegJacobian2(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ self.r_bl
+		# y[9:12] = MathUtils.CrossProductMatrix(om) @ self.r_bl
+
+		return y
+
+	def bodyGravityVector(self):
+		"""
+		returns the gravity vector in the body frame
+		"""
+		g_b = self.g + 2*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ (MathUtils.CrossProductMatrix(self.toQuaternionVector()) \
+				@ self.g - self.toQuaternionScalar()*self.g)
+
+		return g_b
+
+		# q = self.toQuaternion()
+		# #
+		# return quaternion.vectorRotation(quaternion.inv(q), quaternion.fromVector(self.g))[1:4]
 
 class UKFStateEstimator(StateEstimator):
 	"""
@@ -56,12 +229,13 @@ class UKFStateEstimator(StateEstimator):
 		self.m = WOOFER_CONFIG.MASS
 
 		self.Q = 0.1 * np.eye(self.L-1)
-		# self.Q = np.diag(np.block([0.1*np.ones(3), 0.1*np.ones(3), 0.1*np.ones(3), 0.1*np.ones(3)]))
+		# self.Q = np.diag(np.block([0.1*np.ones(3), 0.1*np.ones(3), 1*np.ones(3)]))
 
 		self.clean_residual = 0.001
 		self.noisy_residual = 1
 
-		self.r = np.block([self.noisy_residual*np.ones(12)])
+		# self.r = np.block([self.noisy_residual*np.ones(12)])
+		self.r = np.block([self.clean_residual*np.ones(12)])
 		self.R = np.diag(self.r)
 
 		self.contacts = np.zeros(4)
@@ -72,8 +246,11 @@ class UKFStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	def update(self, sim, contacts):#sim, u_all, contacts):
-		z_meas = self.getSensorMeasurements(sim)
+		self.i = 0
+
+	def update(self, z_meas, contacts):
+	# def update(self, sim, contacts):
+	# 	z_meas = self.getSensorMeasurements(sim)
 
 		# print("Condition Number: ", np.linalg.cond(self.P))
 
@@ -84,7 +261,7 @@ class UKFStateEstimator(StateEstimator):
 					# update position/velocity residual covariance for that foot
 					self.r[3*i:3+3*i] = self.clean_residual*np.ones(3)
 				else:
-					self.r[3*i:3+3*i] = self.noisy_residual*np.ones(6)
+					self.r[3*i:3+3*i] = self.noisy_residual*np.ones(3)
 
 				self.R = np.diag(self.r)
 				self.contacts[i] = contacts[i]
@@ -145,9 +322,10 @@ class UKFStateEstimator(StateEstimator):
 
 		# Innovation
 		nu = np.zeros(self.r.shape)
-		nu = kinematic_vel - z_bar
+		nu = z_bar - kinematic_vel
 
-		# print("Nu residual norm: ", np.linalg.norm(nu[6:]))
+		# self.x = x_bar
+		# self.P = Pxx
 
 		#Innovation Covariance
 		S = Pzz + self.R
@@ -159,6 +337,16 @@ class UKFStateEstimator(StateEstimator):
 
 		q_prev = self.x[3:7]
 
+		if(self.i % 100 == 0):
+			# print("Kinematic vel: ", kinematic_vel)
+			# print("nu: ", nu)
+			# print(self.R)
+			print("Nu residual norm: ", np.linalg.norm(nu))
+			print("update: ", x_update)
+			# joint_pos = z_meas[6:18]
+			# print(WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]))
+			# print(z_meas[18:30])
+
 		# multiplicative quaternion update
 		self.x[0:3] = x_bar[0:3] + x_update[0:3]
 		self.x[3:7] = quaternion.prod(x_bar[3:7], quaternion.exp(x_update[3:6]))
@@ -168,9 +356,13 @@ class UKFStateEstimator(StateEstimator):
 
 		self.P = Pxx - K @ S @ K.T
 
+		self.i = self.i + 1
+
 		joints 		= z_meas[6:18]
 		joint_vel 	= z_meas[18:30]
 
+		# state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":z_meas[3:6], \
+		# 				"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
 		state_est = {"p":self.x[0:3], "p_d":self.x[7:10], "q":self.x[3:7], "w":z_meas[3:6], \
 						"j":joints, "j_d":joint_vel, "b_a":self.x[13:16], "b_g":self.x[16:19]}
 
@@ -203,8 +395,6 @@ class UKFStateEstimator(StateEstimator):
 		xdot[3:7] = 0.5*quaternion.prod(q, quaternion.fromVector(om))
 
 		# acceleration
-
-		# sum foot forces in the world frame
 		xdot[7:10] = quaternion.vectorRotation(x[3:7], quaternion.fromVector(a))[1:4] + np.array([0,0,-9.81])
 
 		# sensor bias
@@ -240,10 +430,10 @@ class UKFStateEstimator(StateEstimator):
 		om = u[3:6]
 		z = np.zeros(self.r.size)
 
-		z[0:3] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fr
-		z[3:6] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fl
-		z[6:9] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_br
-		z[9:12] = rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_bl
+		z[0:3] = -rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fr
+		z[3:6] = -rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_fl
+		z[6:9] = -rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_br
+		z[9:12] = -rotations.quat2mat(x[3:7]) @ WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] + rotations.quat2mat(x[3:7]) @ MathUtils.CrossProductMatrix(om) @ self.r_bl
 
 		return z
 

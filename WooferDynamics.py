@@ -1,5 +1,6 @@
 import numpy as np
 import rotations
+from math import sin, cos
 from WooferConfig import WOOFER_CONFIG
 
 def FootSelector(binary_foot_selector):
@@ -108,6 +109,24 @@ def LegJacobian(beta, theta, r, abaduction_offset = 0):
 	dpdr 		= np.dot(rotations.euler2mat([beta,theta,0]), radial_axis)
 
 	return np.column_stack([dpdbeta, dpdtheta, dpdr])
+
+def LegJacobian2(beta, theta, r):
+	"""
+
+	"""
+	J = np.zeros((3,3))
+	J[0,0] = 0
+	J[0,1] = (WOOFER_CONFIG.LEG_L + r)*cos(theta)*-1
+	J[0,2] = sin(theta)*-1
+	J[1,0] = (WOOFER_CONFIG.LEG_L + r)*cos(beta)*cos(theta)
+	J[1,1] = -(WOOFER_CONFIG.LEG_L + r)*cos(beta)*sin(theta)
+	J[1,2] = sin(beta)*cos(theta)
+	J[2,0] = -(WOOFER_CONFIG.LEG_L + r)*sin(beta)*cos(theta)
+	J[2,1] = -(WOOFER_CONFIG.LEG_L + r)*cos(beta)*sin(theta)
+	J[2,2] = cos(beta)*cos(theta)
+
+	return J
+
 
 def FootForceToJointTorques(F_world, leg_joints, body_quat, abaduction_offset = 0):
 		"""
