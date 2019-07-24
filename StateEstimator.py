@@ -58,14 +58,13 @@ class EKFVelocityStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-		self.clean_residual = 0.01
-		self.noisy_residual = 1
+		self.clean_residual = 0.1
 
 		self.P = np.diag(np.block([0.01*np.ones(3), 0.01*np.ones(2)]))
 
 		self.Q = np.diag(np.block([0.1*np.ones(3), 0.01*np.ones(2)]))
 
-		self.r = np.block([self.clean_residual*np.ones(12)])
+		self.r = self.clean_residual*np.ones(3)
 		self.R = np.diag(self.r)
 
 		self.i = 0
@@ -118,37 +117,33 @@ class EKFVelocityStateEstimator(StateEstimator):
 		x_ = self.x + xdot*self.dt
 		P_ = A @ self.P @ A.T + self.Q
 
-		## measurement update ##
-		C = np.zeros((12,5))
-		C[0:3,0:3] = np.eye(3)
-		C[3:6,0:3] = np.eye(3)
-		C[6:9,0:3] = np.eye(3)
-		C[9:12,0:3] = np.eye(3)
+		x_plus = x_
+		P_plus = P_
 
-		y_kinematic = self.kinematics(x_, z_meas)
-		nu = np.zeros(12)#C @ x_ - y_kinematic
+		## measurement (sequential) update ##
+		for i in range(4):
+			if(contacts[i] == 1):
+				C = np.zeros((3,5))
+				C[0:3,0:3] = np.eye(3)
 
-		# print("v_b: ", C @ x_)
-		# print("Nu: ", nu)
+				y_kinematic = self.kinematics(x_plus, z_meas, i)
+				nu = y_kinematic - C @ x_plus
 
-		S = C @ P_ @ C.T + self.R
+				S = C @ P_plus @ C.T + self.R
 
-		K = P_ @ C.T @ np.linalg.inv(S)
-		# print("Kalman Gain: ", K[3:5,:])
-		# print("Roll/Pitch Update: ", (K@nu)[3:5])
+				K = P_plus @ C.T @ np.linalg.inv(S)
 
-		self.x = x_ + K @ nu
-		self.P = P_ - K @ S @ K.T
+				x_plus = x_plus + K @ nu
+				P_plus = P_plus - K @ S @ K.T
+
+		self.x = x_plus
+		self.P = P_plus
 
 		joints 		= z_meas[6:18]
 		joint_vel 	= z_meas[18:30]
 
-		# if(self.i % 100 == 0):
-		# 	print("Covariance: ", P_)
-		# 	print("Innovation Covariance: ", S)
-
 		self.i = self.i + 1
-		return (self.x, y_kinematic)
+		return self.x
 
 	def toQuaternion(self):
 		"""
@@ -176,7 +171,7 @@ class EKFVelocityStateEstimator(StateEstimator):
 		q[1] = 0.5*self.x[4]
 		return q
 
-	def kinematics(self, x, u):
+	def kinematics(self, x, u, foot_selector):
 		"""
 		return the predicted body frame velocity of the COM from kinematics
 		"""
@@ -184,19 +179,20 @@ class EKFVelocityStateEstimator(StateEstimator):
 		joint_pos = u[6:18]
 		joint_vel = u[18:30]
 		om = u[3:6]
-		y = np.zeros(self.r.size)
+		y = np.zeros(3)
 
-		# print("Mine: ", WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]))
-		# print("Nathan: ", WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]))
-
-		y[0:3] = -WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ self.r_fr
-		# y[0:3] = MathUtils.CrossProductMatrix(om) @ self.r_fr
-		y[3:6] = -WooferDynamics.LegJacobian2(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ self.r_fl
-		# y[3:6] = MathUtils.CrossProductMatrix(om) @ self.r_fl
-		y[6:9] = -WooferDynamics.LegJacobian2(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ self.r_br
-		# y[6:9] = MathUtils.CrossProductMatrix(om) @ self.r_br
-		y[9:12] = -WooferDynamics.LegJacobian2(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ self.r_bl
-		# y[9:12] = MathUtils.CrossProductMatrix(om) @ self.r_bl
+		if foot_selector == 0:
+			y = -WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ self.r_fr
+			# y[0:3] = MathUtils.CrossProductMatrix(om) @ self.r_fr
+		elif foot_selector == 1:
+			y = -WooferDynamics.LegJacobian2(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ self.r_fl
+			# y[3:6] = MathUtils.CrossProductMatrix(om) @ self.r_fl
+		elif foot_selector == 2:
+			y = -WooferDynamics.LegJacobian2(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ self.r_br
+			# y[6:9] = MathUtils.CrossProductMatrix(om) @ self.r_br
+		else:
+			y = -WooferDynamics.LegJacobian2(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ self.r_bl
+			# y[9:12] = MathUtils.CrossProductMatrix(om) @ self.r_bl
 
 		return y
 
