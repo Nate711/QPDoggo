@@ -58,7 +58,7 @@ class EKFVelocityStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-		self.clean_residual = 0.1
+		self.clean_residual = 0.001
 
 		self.P = np.diag(np.block([0.01*np.ones(3), 0.01*np.ones(2)]))
 
@@ -80,7 +80,7 @@ class EKFVelocityStateEstimator(StateEstimator):
 		## Dynamics propogation ##
 		xdot = np.zeros(5)
 		xdot[0:3] = f_b - self.bodyGravityVector() #- MathUtils.CrossProductMatrix(om_b) @ self.x[0:3]
-		xdot[3] = om_b[0] * self.toQuaternionScalar() + 0.5*self.x[4]*om_b[2]
+		xdot[3] = om_b[0] * self.toQuaternionScalar() - 0.5*self.x[4]*om_b[2]
 		xdot[4] = om_b[1] * self.toQuaternionScalar() + 0.5*self.x[3]*om_b[2]
 
 		A = np.zeros((5,5))
@@ -107,7 +107,7 @@ class EKFVelocityStateEstimator(StateEstimator):
 		# dphi/dphi
 		A[3,3] = 1 - 0.25*om_b[0]*self.x[3]*self.dt/self.toQuaternionScalar()
 		# dphi/dtheta
-		A[3,4] = (-0.25*om_b[0]*self.x[4]/self.toQuaternionScalar() + 0.5*om_b[2])*self.dt
+		A[3,4] = (-0.25*om_b[0]*self.x[4]/self.toQuaternionScalar() - 0.5*om_b[2])*self.dt
 		# dtheta/dphi
 		A[4,3] = (-0.25*om_b[1]*self.x[3]/self.toQuaternionScalar() + 0.5*om_b[2])*self.dt
 		# dtheta/dtheta
@@ -182,17 +182,13 @@ class EKFVelocityStateEstimator(StateEstimator):
 		y = np.zeros(3)
 
 		if foot_selector == 0:
-			y = -WooferDynamics.LegJacobian2(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ self.r_fr
-			# y[0:3] = MathUtils.CrossProductMatrix(om) @ self.r_fr
+			y = -WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[0:3], 0)
 		elif foot_selector == 1:
-			y = -WooferDynamics.LegJacobian2(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ self.r_fl
-			# y[3:6] = MathUtils.CrossProductMatrix(om) @ self.r_fl
+			y = -WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[3:6], 1)
 		elif foot_selector == 2:
-			y = -WooferDynamics.LegJacobian2(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ self.r_br
-			# y[6:9] = MathUtils.CrossProductMatrix(om) @ self.r_br
+			y = -WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[6:9], 2)
 		else:
-			y = -WooferDynamics.LegJacobian2(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ self.r_bl
-			# y[9:12] = MathUtils.CrossProductMatrix(om) @ self.r_bl
+			y = -WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[9:12], 3)
 
 		return y
 

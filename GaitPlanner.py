@@ -22,14 +22,14 @@ class StandingPlanner(GaitPlanner):
 	Stands still!
 	"""
 	def update(self, state, contacts, t):
-		freq 		= 	1.0
+		freq 		= 	2.0 #1.0
 		phase 		= 	t * 2 * pi * freq
 		p_ref 		= 	np.array([	sin(phase)*0.01,
 									cos(phase)*0.01,
-									sin(phase)*0.05 + 0.32])
-		rpy_ref		= 	np.array([	sin(phase)*10*pi/180.0,
+									sin(phase)*0.01 + 0.32])
+		rpy_ref		= 	np.array([	sin(phase)*10*pi/180.0 + 0*pi/180,
 									cos(phase)*10*pi/180.0 + 0*pi/180,
-									sin(phase)*10*pi/180.0])
+									sin(phase)*10*pi/180.0 + 0*pi/180])
 
 		# Boolean representation of which feet the QP controller treats as in contact with the ground.
 		# A 1 in the ith slot means that the ith leg is in contact with the ground

@@ -37,7 +37,7 @@ def LegForwardKinematics(quat_orientation, joints):
 	feet_world = np.dot(rotations.quat2mat(quat_orientation), feet_col_stack)
 	return feet_world.T.reshape(12)
 
-def SingleLegForwardKinematics(quat_orientation, joints, foot_selector):
+def SingleLegForwardKinematics(joints, foot_selector):
 	"""
 	Gives the North-East-Down (NED)-style coordinates of a single foot. NED coordinates are coordinates in a noninertial reference frame
 	attached to the CoM of the robot. The axes of the NED frame are parallel to the x, y, and z axes in this simulation.
@@ -47,28 +47,30 @@ def SingleLegForwardKinematics(quat_orientation, joints, foot_selector):
 	foot_selector:		0 = fr, 1 = fl, 2 = br, 3 = bl
 	"""
 
-	def LegFK(abad, for_back, radial, handedness):
-		hands = {"left":1, "right":-1}
-		offset = hands[handedness]*(WOOFER_CONFIG.ABDUCTION_OFFSET)
-		leg_unrotated = np.array([0, offset, -WOOFER_CONFIG.LEG_L + radial])
-		R = rotations.euler2mat([abad, for_back, 0])	# rotation matrix for abduction, then forward back
-		foot = np.dot(R,leg_unrotated)
-		return foot
+	r_fr = np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	r_fl = np.array([WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+	r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
+	r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-	# Get foot locations in local body coordinates
-	# Right-handedness of frame means y is positive in the LEFT direction
-	if(foot_selector == 0):
-		foot = LegFK(joints[0], joints[1], joints[2], "right") + np.array([WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
-	elif(foot_selector == 1):
-		foot = LegFK(joints[0], joints[1], joints[2], "left")  + np.array([WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
-	elif(foot_selector == 2):
-		foot = LegFK(joints[0], joints[1], joints[2], "right") + np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
-	elif(foot_selector == 3):
-		foot = LegFK(joints[0], joints[1],joints[2],"left")  + np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
+	beta = joints[0]
+	theta = joints[1]
+	r = joints[2]
 
-	# Transform into world coordinates (centered around robot COM)
-	foot_world = np.dot(rotations.quat2mat(quat_orientation), foot)
-	return foot_world
+	r_rel = np.zeros(3)
+	r_rel[0] = -(WOOFER_CONFIG.LEG_L + r)*np.sin(theta)
+	r_rel[1] = (WOOFER_CONFIG.LEG_L + r)*np.cos(theta)*np.sin(beta)
+	r_rel[2] = -(WOOFER_CONFIG.LEG_L + r)*np.cos(theta)*np.cos(beta)
+
+	if foot_selector == 0:
+		r_rel += r_fr
+	elif foot_selector == 1:
+		r_rel += r_fl
+	elif foot_selector == 2:
+		r_rel += r_br
+	else:
+		r_rel += r_bl
+
+	return r_rel
 
 def FootLocationsWorld(state):
 	"""
@@ -116,14 +118,14 @@ def LegJacobian2(beta, theta, r):
 	"""
 	J = np.zeros((3,3))
 	J[0,0] = 0
-	J[0,1] = (WOOFER_CONFIG.LEG_L + r)*cos(theta)*-1
-	J[0,2] = sin(theta)*-1
+	J[0,1] = -(WOOFER_CONFIG.LEG_L + r)*cos(theta)
+	J[0,2] = -sin(theta)
 	J[1,0] = (WOOFER_CONFIG.LEG_L + r)*cos(beta)*cos(theta)
 	J[1,1] = -(WOOFER_CONFIG.LEG_L + r)*cos(beta)*sin(theta)
 	J[1,2] = sin(beta)*cos(theta)
-	J[2,0] = -(WOOFER_CONFIG.LEG_L + r)*sin(beta)*cos(theta)
-	J[2,1] = -(WOOFER_CONFIG.LEG_L + r)*cos(beta)*sin(theta)
-	J[2,2] = cos(beta)*cos(theta)
+	J[2,0] = (WOOFER_CONFIG.LEG_L + r)*sin(beta)*cos(theta)
+	J[2,1] = (WOOFER_CONFIG.LEG_L + r)*cos(beta)*sin(theta)
+	J[2,2] = -cos(beta)*cos(theta)
 
 	return J
 
@@ -186,5 +188,3 @@ def joint_pos_sensor(sim):
 	return sim.data.sensordata[6:18]
 def joint_vel_sensor(sim):
 	return sim.data.sensordata[18:30]
-def force_sensor(sim):
-	return sim.data.sensordata[30:42]

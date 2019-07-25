@@ -62,14 +62,12 @@ class WooferRobot():
 		self.data['gyro_history']				= np.zeros((3,init_data_size))
 		self.data['joint_pos_sensor_hist']		= np.zeros((12,init_data_size))
 		self.data['joint_vel_sensor_hist']		= np.zeros((12,init_data_size))
-		self.data['force_sensor_hist']			= np.zeros((12,init_data_size))
 		self.data['state_history']				= np.zeros((13,init_data_size))
 		#
 		self.accelerometer_sensor 				= None
 		self.gyro_sensor 						= None
 		self.joint_pos_sensor					= None
 		self.joint_vel_sensor					= None
-		self.force_sensor_hist					= None
 
 		self.dt = dt
 		self.t = 0
@@ -106,7 +104,6 @@ class WooferRobot():
 		self.gyro_sensor 			= WooferDynamics.gyro_sensor(sim)
 		self.joint_pos_sensor 		= WooferDynamics.joint_pos_sensor(sim)
 		self.joint_vel_sensor 		= WooferDynamics.joint_vel_sensor(sim)
-		self.force_sensor			= WooferDynamics.force_sensor(sim)
 
 		################################### Contact estimation ###################################
 		self.contacts 	= self.contact_estimator.update(sim)
@@ -216,7 +213,6 @@ class WooferRobot():
 		self.data['joint_pos_sensor_hist'][:,self.i]= self.joint_pos_sensor
 		self.data['joint_vel_sensor_hist'][:,self.i]= self.joint_vel_sensor
 		self.data['state_history'][:,self.i]		= self.state_arr
-		self.data['force_sensor_hist'][:,self.i]	= self.force_sensor
 
 	def print_data(self):
 		"""
@@ -262,7 +258,7 @@ def MakeWoofer(dt = 0.001):
 	# gait_planner 		= StepPlanner()
 	swing_controller	= PDSwingLegController()
 
-	# woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
-	woofer = WooferRobot(ukf_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
+	woofer = WooferRobot(mujoco_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
+	# woofer = WooferRobot(ukf_state_est, mujoco_contact_est, qp_controller, gait_planner, swing_controller, dt = dt)
 
 	return woofer

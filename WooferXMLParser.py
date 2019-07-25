@@ -25,7 +25,7 @@ def Parse():
 
 	woofer_start_position = "0 0 %s"%(WOOFER_CONFIG.LEG_L + woofer_leg_radius)	# Initial position of the robot torso
 
-	woofer_force_geom = "0 0 0"
+	woofer_force_geom = "0 0 -0.34"
 
 	## Mass/Inertia Params ##
 	woofer_frame_mass = "2"

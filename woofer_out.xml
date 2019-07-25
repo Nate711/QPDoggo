@@ -51,11 +51,6 @@
 		<jointvel joint="bl_x" noise="0.01"/>
 		<jointvel joint="bl_y" noise="0.01"/>
 		<jointvel joint="bl_r" noise="0.01"/>
-
-		<force name="fr_force" noise="0" site="fr_force_site"/>
-		<force name="fl_force" noise="0" site="fl_force_site"/>
-		<force name="br_force" noise="0" site="br_force_site"/>
-		<force name="bl_force" noise="0" site="bl_force_site"/>
 	</sensor>
 
   <size nstack="300000" nuser_geom="1"/>
@@ -99,13 +94,8 @@
 
 					<inertial pos="0 0 0" mass="0.258" fullinertia="0.003575 0.006356 0.002973 -0.0001326 -0.0001079 -0.0002538"/>
 
-					<site name="fr_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-          <!-- <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<site name="fr_force_site" pos="0 0 -0.34" size=".01 .01 .01" type="box"/>
           <geom axisangle="0 1 0 0" name="fr" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
-					<!-- <body name="fr_end" pos="0 0 -0.32">
-						<site name="fr_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-						<geom axisangle="0 1 0 0" name="fr_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
-					</body> -->
         </body>
       </body>
 
@@ -121,13 +111,8 @@
 
 					<inertial pos="0 0 0" mass="0.258" fullinertia="0.003575 0.006356 0.002973 -0.0001326 -0.0001079 -0.0002538"/>
 
-					<site name="fl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-          <!-- <geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<site name="fl_force_site" pos="0 0 -0.34" size=".01 .01 .01" type="box"/>
 					<geom axisangle="0 1 0 0" name="fl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
-					<!-- <body name="fl_end" pos="0 0 -0.32">
-						<site name="fl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-						<geom axisangle="0 1 0 0" name="fl_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
-					</body> -->
         </body>
       </body>
 
@@ -143,13 +128,8 @@
 
 					<inertial pos="0 0 0" mass="0.258" fullinertia="0.003575 0.006356 0.002973 -0.0001326 -0.0001079 -0.0002538"/>
 
-					<site name="br_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-          <!-- <geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<site name="br_force_site" pos="0 0 -0.34" size=".01 .01 .01" type="box"/>
 					<geom axisangle="0 1 0 0" name="br" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
-					<!-- <body name="br_end" pos="0 0 -0.32">
-						<site name="br_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-						<geom axisangle="0 1 0 0" name="br_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
-					</body> -->
         </body>
       </body>
 
@@ -165,13 +145,8 @@
 
 					<inertial pos="0 0 0" mass="0.258" fullinertia="0.003575 0.006356 0.002973 -0.0001326 -0.0001079 -0.0002538"/>
 
-					<site name="bl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-          <!-- <geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="0.0001"/> -->
+					<site name="bl_force_site" pos="0 0 -0.34" size=".01 .01 .01" type="box"/>
 					<geom axisangle="0 1 0 0" name="bl" fromto="0 0 0 0 0 -0.32" size="0.02" type="capsule" rgba = "1 0 0 0.5" density="50"/>
-					<!-- <body name="bl_end" pos="0 0 -0.32">
-						<site name="bl_force_site" pos="0 0 0" size=".01 .01 .01" type="box"/>
-						<geom axisangle="0 1 0 0" name="bl_end_g" type="sphere" size="0.02" rgba = "1 0 0 0.5" density="0.0001"/>
-					</body> -->
         </body>
       </body>
 

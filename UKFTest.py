@@ -18,9 +18,9 @@ n = np.shape(data['state_history'])[1]
 
 n = 4500
 
-state_est = np.zeros((L, n))
+state_est = np.zeros((19, n))
 
-state_est[:,0] = x0
+state_est[:L,0] = x0
 
 for i in range(1, n):
 	accel_meas = data['accelerometer_history'][:, i]
@@ -62,19 +62,19 @@ for i in range(1, n):
 	state_est[3:7, i] = state_i['q']
 	state_est[7:10, i] = state_i['p_d']
 	state_est[10:13, i] = state_i['w']
-	state_est[13:16, i] = state_i['b_a']
-	state_est[16:19, i] = state_i['b_g']
+	# state_est[13:16, i] = state_i['b_a']
+	# state_est[16:19, i] = state_i['b_g']
 
 	# q_true = np.array([1.0, 0.0, 0.0, 0.0])
 
 	q_true = data['state_history'][3:7, i]
 	q_est = state_est[3:7,i]
 
-	q_d = quaternion.prod(quaternion.inv(q_est), q_true)
-	phi = np.linalg.norm(quaternion.log(q_d))
-	phi = np.abs((phi + np.pi) % (2 * np.pi) - np.pi)
-
-	print("Error: ", phi)
+	# q_d = quaternion.prod(quaternion.inv(q_est), q_true)
+	# phi = np.linalg.norm(quaternion.log(q_d))
+	# phi = np.abs((phi + np.pi) % (2 * np.pi) - np.pi)
+	#
+	# print("Error: ", phi)
 
 
 np.savez('woofer_state_est_log', state_est)
