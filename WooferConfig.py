@@ -35,7 +35,7 @@ class WooferConfig:
 class EnvironmentConfig:
 	def __init__(self):
 		self.MU 			= 1.5 	# coeff friction
-		self.SIM_STEPS 		= 5000 	# simulation steps to take
+		self.SIM_STEPS 		= 10000 # simulation steps to take
 		self.DT 			= 0.001 # timestep [s]
 
 # Software stuff

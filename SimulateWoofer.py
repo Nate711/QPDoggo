@@ -46,24 +46,6 @@ for i in range(timesteps):
 		# pass
 		woofer.print_data()
 
-	(beta, theta, r) = (sim.data.qpos[7], sim.data.qpos[8], sim.data.qpos[9])
-
-	r_fr_rel = np.zeros(3)
-	r_fr_rel[0] = -(WOOFER_CONFIG.LEG_L + r)*np.sin(theta)
-	r_fr_rel[1] = (WOOFER_CONFIG.LEG_L + r)*np.cos(theta)*np.sin(beta)
-	r_fr_rel[2] = -(WOOFER_CONFIG.LEG_L + r)*np.cos(theta)*np.cos(beta)
-
-	# r_fr_me = sim.data.qpos[0:3] + rotations.quat2mat(sim.data.qpos[3:7]) @ (r_fr_i + r_fr_rel)
-
-	# using WooferDynamics LegJacobian2
-	v_b_true = rotations.quat2mat(sim.data.qpos[3:7]) @ sim.data.qvel[0:3]
-	v_i = v_b_true + MathUtils.CrossProductMatrix(sim.data.qvel[3:6]) @ (r_fr + r_fr_rel)
-
-
-	v_rel = -WooferDynamics.LegJacobian(sim.data.qpos[7], sim.data.qpos[8], sim.data.qpos[9]) @ sim.data.qvel[6:9]
-
-	e += (v_i - v_rel).T @ (v_i - v_rel)
-
 	# Run the control law according to the control rate
 	# if i%control_rate == 0:
 	# 	# Add latency and noise
@@ -74,7 +56,6 @@ for i in range(timesteps):
 
 	sim.step()
 	viewer.render()
-print(e/timesteps)
 
 """
 Save data to file

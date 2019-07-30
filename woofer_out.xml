@@ -18,23 +18,23 @@
 
 	<sensor>
 		<accelerometer name="accel" noise="0.01" site="imu_site"/>
-		<gyro name="gyro" noise="0.01" site="imu_site"/>
+		<gyro name="gyro" noise="0.02" site="imu_site"/>
 
-		<jointpos joint="fr_x" noise="0.01"/>
-		<jointpos joint="fr_y" noise="0.01"/>
-		<jointpos joint="fr_r" noise="0.01"/>
+		<jointpos joint="fr_x" noise="0.001"/>
+		<jointpos joint="fr_y" noise="0.001"/>
+		<jointpos joint="fr_r" noise="0.001"/>
 
-		<jointpos joint="fl_x" noise="0.01"/>
-		<jointpos joint="fl_y" noise="0.01"/>
-		<jointpos joint="fl_r" noise="0.01"/>
+		<jointpos joint="fl_x" noise="0.001"/>
+		<jointpos joint="fl_y" noise="0.001"/>
+		<jointpos joint="fl_r" noise="0.001"/>
 
-		<jointpos joint="br_x" noise="0.01"/>
-		<jointpos joint="br_y" noise="0.01"/>
-		<jointpos joint="br_r" noise="0.01"/>
+		<jointpos joint="br_x" noise="0.001"/>
+		<jointpos joint="br_y" noise="0.001"/>
+		<jointpos joint="br_r" noise="0.001"/>
 
-		<jointpos joint="bl_x" noise="0.01"/>
-		<jointpos joint="bl_y" noise="0.01"/>
-		<jointpos joint="bl_r" noise="0.01"/>
+		<jointpos joint="bl_x" noise="0.001"/>
+		<jointpos joint="bl_y" noise="0.001"/>
+		<jointpos joint="bl_r" noise="0.001"/>
 
 		<jointvel joint="fr_x" noise="0.01"/>
 		<jointvel joint="fr_y" noise="0.01"/>

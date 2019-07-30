@@ -47,8 +47,8 @@ def Parse():
 
 	## Sensor Noise Parameters ##
 	woofer_accel_noise = 0.01
-	woofer_encoder_noise = 0.01
-	woofer_gyro_noise = 0.01
+	woofer_encoder_noise = 0.001
+	woofer_gyro_noise = 0.02
 	woofer_encoder_vel_noise = 0.01
 	woofer_force_noise = 0
 

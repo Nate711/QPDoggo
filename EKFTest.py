@@ -4,9 +4,12 @@ from WooferConfig import WOOFER_CONFIG
 import pdb
 import quaternion
 
-L = 5
+L = 11
 
 x0 = np.zeros(L)
+
+(mu, sigma) = (0, .1)
+
 
 ekf_state_est = EKFVelocityStateEstimator(x0, 0.001)
 
@@ -14,7 +17,7 @@ data = np.load('woofer_numpy_log.npz')
 
 n = np.shape(data['state_history'])[1]
 
-n = 4500
+n = 9500
 
 state_est = np.zeros((L, n))
 

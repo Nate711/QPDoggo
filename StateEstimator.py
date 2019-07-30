@@ -58,14 +58,24 @@ class EKFVelocityStateEstimator(StateEstimator):
 		self.r_br = np.array([-WOOFER_CONFIG.LEG_FB, 	-WOOFER_CONFIG.LEG_LR, 0])
 		self.r_bl = np.array([-WOOFER_CONFIG.LEG_FB, 	 WOOFER_CONFIG.LEG_LR, 0])
 
-		self.clean_residual = 0.001
+		self.clean_residual = 0.01
 
-		self.P = np.diag(np.block([0.01*np.ones(3), 0.01*np.ones(2)]))
+		self.P = np.diag(np.block([0.1*np.ones(3), 0.1*np.ones(2), 0.1*np.ones(6)]))
 
-		self.Q = np.diag(np.block([0.1*np.ones(3), 0.01*np.ones(2)]))
+		self.Q = np.diag(np.block([0.01*np.ones(3), 0.001*np.ones(2), 1e-7*np.ones(6)]))
 
 		self.r = self.clean_residual*np.ones(3)
 		self.R = np.diag(self.r)
+
+		# true_b = np.zeros(6)
+		# true_b[0:3] = np.array([0.01, 0.0, 0])
+		true_b = np.array([0.1, 0.01, -0.02, 0.01, 0.05, -0.01])
+		# true_b = np.random.normal(mu, sigma, (6))
+		print("True Bias: ", true_b)
+
+		self.x[5:11] = true_b + np.random.normal(0, 1e-3, (6))
+
+		self.true_b = true_b
 
 		self.i = 0
 
@@ -74,18 +84,25 @@ class EKFVelocityStateEstimator(StateEstimator):
 		z_meas = [accelerometer gyro joint_pos joint_vel]
 		"""
 
+		# add bias
+		z_meas[0:6] += self.true_b
+
 		f_b = z_meas[0:3]
 		om_b = z_meas[3:6]
 
-		## Dynamics propogation ##
-		xdot = np.zeros(5)
-		xdot[0:3] = f_b - self.bodyGravityVector() #- MathUtils.CrossProductMatrix(om_b) @ self.x[0:3]
-		xdot[3] = om_b[0] * self.toQuaternionScalar() - 0.5*self.x[4]*om_b[2]
-		xdot[4] = om_b[1] * self.toQuaternionScalar() + 0.5*self.x[3]*om_b[2]
+		b_f = self.x[5:8]
 
-		A = np.zeros((5,5))
+		b_w =  self.x[8:11]
+
+		## Dynamics propogation ##
+		xdot = np.zeros(self.L)
+		xdot[0:3] = (f_b - b_f) - self.bodyGravityVector() - MathUtils.CrossProductMatrix(om_b - b_w) @ self.x[0:3]
+		xdot[3] = (om_b[0] - b_w[0]) * self.toQuaternionScalar() + 0.5*self.x[4]*(om_b[2] - b_w[2])
+		xdot[4] = (om_b[1] - b_w[1]) * self.toQuaternionScalar() - 0.5*self.x[3]*(om_b[2] - b_w[2])
+
+		A = np.zeros((self.L, self.L))
 		# dv/dv
-		A[0:3,0:3] = np.eye(3) - MathUtils.CrossProductMatrix(om_b)*self.dt
+		A[0:3,0:3] = np.eye(3) - MathUtils.CrossProductMatrix(om_b - b_w)*self.dt
 
 		dqvdphi = np.array([0.5, 0, 0])
 		dqvdtheta = np.array([0, 0.5, 0])
@@ -104,30 +121,57 @@ class EKFVelocityStateEstimator(StateEstimator):
 					2*self.toQuaternionScalar()*MathUtils.CrossProductMatrix(self.g)) @ dqvdtheta - \
 					2*dqsdtheta*MathUtils.CrossProductMatrix(self.toQuaternionVector()) @ self.g)
 
-		# dphi/dphi
-		A[3,3] = 1 - 0.25*om_b[0]*self.x[3]*self.dt/self.toQuaternionScalar()
-		# dphi/dtheta
-		A[3,4] = (-0.25*om_b[0]*self.x[4]/self.toQuaternionScalar() - 0.5*om_b[2])*self.dt
-		# dtheta/dphi
-		A[4,3] = (-0.25*om_b[1]*self.x[3]/self.toQuaternionScalar() + 0.5*om_b[2])*self.dt
-		# dtheta/dtheta
-		A[4,4] = 1 - 0.25*om_b[0]*self.x[4]*self.dt/self.toQuaternionScalar()
+		# dv/dba
+		A[0:3, 5:8] = -np.eye(3)*self.dt
 
-		# swtich to RK4?
+		# dv/dbw
+		A[0:3, 8:11] = -MathUtils.CrossProductMatrix(self.x[0:3])*self.dt
+
+		# dphi/dphi
+		A[3,3] = 1 - 0.25*(om_b[0] - b_w[0])*self.x[3]*self.dt/self.toQuaternionScalar()
+
+		# dphi/dtheta
+		A[3,4] = (-0.25*(om_b[0] - b_w[0])*self.x[4]/self.toQuaternionScalar() + 0.5*(om_b[2] - b_w[2]))*self.dt
+
+		# dphi/dbw
+		A[3, 5] = -self.toQuaternionScalar()*self.dt
+		A[3, 6] = -0.5*self.x[4]*self.dt
+
+		# dtheta/dphi
+		A[4,3] = (-0.25*(om_b[1] - b_w[1])*self.x[3]/self.toQuaternionScalar() - 0.5*(om_b[2] - b_w[2]))*self.dt
+
+		# dtheta/dtheta
+		A[4,4] = 1 - 0.25*(om_b[0] - b_w[0])*self.x[4]*self.dt/self.toQuaternionScalar()
+
+		# dtheta/dbw
+		A[4, 5] = 0.5*self.x[3]*self.dt
+		A[4, 6] = -self.toQuaternionScalar()*self.dt
+
+		# dba/dba
+		A[5:8, 5:8] = np.eye(3)
+
+		# dbw/dbw
+		A[8:11, 8:11] = np.eye(3)
+
 		x_ = self.x + xdot*self.dt
 		P_ = A @ self.P @ A.T + self.Q
 
 		x_plus = x_
 		P_plus = P_
 
+		# print(P_)
+
 		## measurement (sequential) update ##
 		for i in range(4):
 			if(contacts[i] == 1):
-				C = np.zeros((3,5))
+				r_rel = WooferDynamics.SingleLegForwardKinematics(z_meas[6+3*i:3*i+9], i)
+				C = np.zeros((3,self.L))
 				C[0:3,0:3] = np.eye(3)
+				C[0:3,8:11] = MathUtils.CrossProductMatrix(r_rel)
 
 				y_kinematic = self.kinematics(x_plus, z_meas, i)
-				nu = y_kinematic - C @ x_plus
+				# nu = y_kinematic - ( x_plus[0:3] + MathUtils.CrossProductMatrix(om_b) @ r_rel)
+				nu = y_kinematic - (x_plus[0:3] + MathUtils.CrossProductMatrix(om_b - x_plus[8:11]) @ r_rel)
 
 				S = C @ P_plus @ C.T + self.R
 
@@ -135,6 +179,8 @@ class EKFVelocityStateEstimator(StateEstimator):
 
 				x_plus = x_plus + K @ nu
 				P_plus = P_plus - K @ S @ K.T
+
+				# import pdb; pdb.set_trace()
 
 		self.x = x_plus
 		self.P = P_plus
@@ -182,13 +228,13 @@ class EKFVelocityStateEstimator(StateEstimator):
 		y = np.zeros(3)
 
 		if foot_selector == 0:
-			y = -WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[0:3], 0)
+			y = -WooferDynamics.LegJacobian(joint_pos[0], joint_pos[1], joint_pos[2]) @ joint_vel[0:3]
 		elif foot_selector == 1:
-			y = -WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[3:6], 1)
+			y = -WooferDynamics.LegJacobian(joint_pos[3], joint_pos[4], joint_pos[5]) @ joint_vel[3:6]
 		elif foot_selector == 2:
-			y = -WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[6:9], 2)
+			y = -WooferDynamics.LegJacobian(joint_pos[6], joint_pos[7], joint_pos[8]) @ joint_vel[6:9]
 		else:
-			y = -WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12] - MathUtils.CrossProductMatrix(om) @ WooferDynamics.SingleLegForwardKinematics(joint_pos[9:12], 3)
+			y = -WooferDynamics.LegJacobian(joint_pos[9], joint_pos[10], joint_pos[11]) @ joint_vel[9:12]
 
 		return y
 
@@ -200,10 +246,6 @@ class EKFVelocityStateEstimator(StateEstimator):
 				@ self.g - self.toQuaternionScalar()*self.g)
 
 		return g_b
-
-		# q = self.toQuaternion()
-		# #
-		# return quaternion.vectorRotation(quaternion.inv(q), quaternion.fromVector(self.g))[1:4]
 
 class UKFStateEstimator(StateEstimator):
 	"""
